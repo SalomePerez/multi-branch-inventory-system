@@ -163,7 +163,11 @@ public class VentaService {
 
         return new VentaResponse(
                 v.getId(),
-                v.getSucursal().getId(), v.getSucursal().getNombre(),
+                v.getSucursal().getId(), 
+                v.getSucursal().getNombre(),
+                v.getSucursal().getDireccion(),
+                v.getSucursal().getTelefono(),
+                v.getSucursal().getEmail(),
                 v.getVendedor().getNombre(),
                 v.getListaPrecio() != null ? v.getListaPrecio().getId() : null,
                 v.getListaPrecio() != null ? v.getListaPrecio().getNombre() : null,

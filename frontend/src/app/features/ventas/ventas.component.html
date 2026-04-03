@@ -185,9 +185,14 @@
 @if (ventaDetalle) {
   <div class="modal-overlay" (click)="ventaDetalle = null">
     <div class="modal" (click)="$event.stopPropagation()">
-      <div class="modal-header">
+      <div class="modal-header no-print">
         <h3>Venta #{{ ventaDetalle.id }}</h3>
-        <button class="btn-close" (click)="ventaDetalle = null">✕</button>
+        <div class="header-actions">
+          <button class="btn-sm btn-edit" (click)="imprimirVenta()">
+            <lucide-icon name="printer" [size]="14"></lucide-icon> Imprimir Comprobante
+          </button>
+          <button class="btn-close" (click)="ventaDetalle = null">✕</button>
+        </div>
       </div>
       <div class="detalle-body">
         <p><strong>Sucursal:</strong> {{ ventaDetalle.sucursalNombre }}</p>
@@ -220,6 +225,92 @@
           </tfoot>
         </table>
       </div>
+    </div>
+  </div>
+}
+
+<!-- Template para Impresión (Solo visible en window.print()) -->
+@if (ventaDetalle) {
+  <div id="print-section" class="print-only">
+    <div class="receipt-header">
+      <div class="business-brand">
+        <p class="system-title">SISTEMA DE INVENTARIO</p>
+        <h1 class="branch-name">{{ ventaDetalle.sucursalNombre }}</h1>
+      </div>
+      <div class="branch-info">
+        <span><lucide-icon name="map-pin" [size]="12"></lucide-icon> {{ ventaDetalle.sucursalDireccion }}</span>
+        <span><lucide-icon name="phone" [size]="12"></lucide-icon> {{ ventaDetalle.sucursalTelefono }}</span>
+        <span><lucide-icon name="mail" [size]="12"></lucide-icon> {{ ventaDetalle.sucursalEmail }}</span>
+      </div>
+    </div>
+
+    <div class="receipt-divider"></div>
+
+    <div class="receipt-meta">
+      <div class="meta-row">
+        <span class="meta-label">COMPROBANTE DE VENTA:</span>
+        <strong>#{{ ventaDetalle.id }}</strong>
+      </div>
+      <div class="meta-row">
+        <span class="meta-label">FECHA:</span>
+        <span>{{ ventaDetalle.createdAt | date:'dd/MM/yyyy HH:mm' }}</span>
+      </div>
+      <div class="meta-row">
+        <span class="meta-label">VENDEDOR:</span>
+        <span>{{ ventaDetalle.vendedorNombre }}</span>
+      </div>
+      @if (ventaDetalle.listaPrecioNombre) {
+        <div class="meta-row">
+          <span class="meta-label">DESCUENTO:</span>
+          <span>{{ ventaDetalle.listaPrecioNombre }}</span>
+        </div>
+      }
+    </div>
+
+    <div class="receipt-divider"></div>
+
+    <table class="receipt-table">
+      <thead>
+        <tr>
+          <th class="text-left">PRODUCTO</th>
+          <th class="text-right">CANT.</th>
+          <th class="text-right">PRECIO</th>
+          <th class="text-right">SUBTOTAL</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (item of ventaDetalle.items; track item.productoId) {
+          <tr>
+            <td>{{ item.productoNombre }}</td>
+            <td class="text-right">{{ item.cantidad }}</td>
+            <td class="text-right">{{ item.precioUnitario | currency:'USD' }}</td>
+            <td class="text-right">{{ item.subtotal | currency:'USD' }}</td>
+          </tr>
+        }
+      </tbody>
+      <tfoot>
+        @if (ventaDetalle.descuentoTotal && ventaDetalle.descuentoTotal > 0) {
+          <tr>
+            <td colspan="3" class="text-right">Subtotal Bruto</td>
+            <td class="text-right">{{ (ventaDetalle.total + ventaDetalle.descuentoTotal) | currency:'USD' }}</td>
+          </tr>
+          <tr class="discount-row">
+            <td colspan="3" class="text-right">Descuentos Aplicados</td>
+            <td class="text-right">-{{ ventaDetalle.descuentoTotal | currency:'USD' }}</td>
+          </tr>
+        }
+        <tr class="total-row">
+          <td colspan="3" class="text-right"><strong>TOTAL A PAGAR</strong></td>
+          <td class="text-right"><strong>{{ ventaDetalle.total | currency:'USD' }}</strong></td>
+        </tr>
+      </tfoot>
+    </table>
+
+    <div class="receipt-divider"></div>
+
+    <div class="receipt-footer">
+      <p>¡Gracias por su compra!</p>
+      <small>Este documento es un comprobante de registro de inventario y venta interna.</small>
     </div>
   </div>
 }

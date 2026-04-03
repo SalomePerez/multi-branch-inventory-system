@@ -61,12 +61,64 @@ public class ReporteService {
         List<Venta> ventas = ventaRepository.findBySucursalAndPeriodo(sucursalId, inicio, fin);
         BigDecimal totalVentas = ventaRepository.sumTotalBySucursalAndPeriodo(sucursalId, inicio, fin);
 
-        return Map.of(
-                "sucursalId", sucursalId,
-                "desde", desde.toString(),
-                "hasta", hasta.toString(),
-                "cantidadVentas", ventas.size(),
-                "totalVentas", totalVentas != null ? totalVentas : BigDecimal.ZERO
+        List<VentaResponse> ventasDetalladas = ventas.stream()
+                .map(this::ventaToResponse)
+                .toList();
+
+        // Use HashMap (not Map.of) to allow null values like listaPrecioId
+        Map<String, Object> result = new java.util.HashMap<>();
+        result.put("sucursalId", sucursalId);
+        result.put("desde", desde.toString());
+        result.put("hasta", hasta.toString());
+        result.put("cantidadVentas", ventas.size());
+        result.put("totalVentas", totalVentas != null ? totalVentas : BigDecimal.ZERO);
+        result.put("ventas", ventasDetalladas);
+        return result;
+    }
+
+    public Map<String, Object> resumenVentasTodas(LocalDate desde, LocalDate hasta) {
+        LocalDateTime inicio = desde.atStartOfDay();
+        LocalDateTime fin = hasta.plusDays(1).atStartOfDay();
+
+        List<Venta> ventas = ventaRepository.findByPeriodo(inicio, fin);
+        BigDecimal totalVentas = ventaRepository.sumTotalByPeriodo(inicio, fin);
+
+        List<VentaResponse> ventasDetalladas = ventas.stream()
+                .map(this::ventaToResponse)
+                .toList();
+
+        Map<String, Object> result = new java.util.HashMap<>();
+        result.put("sucursalId", null);
+        result.put("desde", desde.toString());
+        result.put("hasta", hasta.toString());
+        result.put("cantidadVentas", ventas.size());
+        result.put("totalVentas", totalVentas != null ? totalVentas : BigDecimal.ZERO);
+        result.put("ventas", ventasDetalladas);
+        return result;
+    }
+
+    private VentaResponse ventaToResponse(Venta v) {
+        List<VentaResponse.ItemVentaResponse> items = v.getItems().stream()
+                .map(i -> new VentaResponse.ItemVentaResponse(
+                        i.getProducto().getId(), i.getProducto().getNombre(),
+                        i.getCantidad(), i.getPrecioUnitario(),
+                        i.getDescuentoAplicado(), i.getSubtotal()))
+                .toList();
+
+        return new VentaResponse(
+                v.getId(),
+                v.getSucursal().getId(),
+                v.getSucursal().getNombre(),
+                v.getSucursal().getDireccion(),
+                v.getSucursal().getTelefono(),
+                v.getSucursal().getEmail(),
+                v.getVendedor().getNombre(),
+                v.getListaPrecio() != null ? v.getListaPrecio().getId() : null,
+                v.getListaPrecio() != null ? v.getListaPrecio().getNombre() : null,
+                v.getTotal(),
+                v.getDescuentoTotal(),
+                v.getObservaciones(),
+                items, v.getCreatedAt()
         );
     }
 
@@ -97,12 +149,73 @@ public class ReporteService {
                 )).collect(Collectors.toList());
     }
 
-    public List<Map<String, Object>> evolucionMensual(int meses) {
-        return ventaRepository.findEvolucionMensual(meses).stream()
-                .map(row -> Map.of(
-                        "mes", row[0],
-                        "total", row[1]
-                )).collect(Collectors.toList());
+    public List<Map<String, Object>> evolucionMensual(int meses, Long sucursalId, Long productoId) {
+        List<Object[]> results;
+        if (productoId != null) {
+            if (sucursalId != null) {
+                results = ventaRepository.findEvolucionMensualPorSucursalYProducto(meses, sucursalId, productoId);
+            } else {
+                results = ventaRepository.findEvolucionMensualPorProducto(meses, productoId);
+            }
+        } else if (sucursalId != null) {
+            results = ventaRepository.findEvolucionMensualPorSucursal(meses, sucursalId);
+        } else {
+            results = ventaRepository.findEvolucionMensual(meses);
+        }
+        
+        return results.stream()
+                .map(row -> {
+                    Map<String, Object> map = new LinkedHashMap<>();
+                    map.put("mes", row[0]);
+                    map.put("total", row[1]);
+                    return map;
+                }).collect(Collectors.toList());
+    }
+
+    public List<Map<String, Object>> prediccionDemanda(int mesesHistoricos, Long sucursalId, Long productoId) {
+        List<Map<String, Object>> historico = evolucionMensual(mesesHistoricos, sucursalId, productoId);
+        if (historico.size() < 2) return new ArrayList<>();
+
+        // x = índice de mes (1, 2, ... n), y = total ventas
+        double n = historico.size();
+        double sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+        
+        // Invertimos para que el orden sea cronológico (1=más antiguo, n=más reciente)
+        List<Map<String, Object>> cronologico = new ArrayList<>(historico);
+        java.util.Collections.reverse(cronologico);
+
+        for (int i = 0; i < n; i++) {
+            double x = i + 1;
+            double y = ((Number) cronologico.get(i).get("total")).doubleValue();
+            sumX += x;
+            sumY += y;
+            sumXY += x * y;
+            sumX2 += x * x;
+        }
+
+        double pendiente = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+        double interseccion = (sumY - pendiente * sumX) / n;
+
+        // Proyectar próximos 2 meses
+        List<Map<String, Object>> proyecciones = new ArrayList<>();
+        LocalDate baseDate = LocalDate.now();
+        
+        for (int i = 1; i <= 2; i++) {
+            double xFuturo = n + i;
+            double yPredicho = pendiente * xFuturo + interseccion;
+            
+            // Asegurar que no haya predicciones negativas absurdas
+            yPredicho = Math.max(0, yPredicho);
+
+            Map<String, Object> proj = new java.util.HashMap<>();
+            LocalDate futureMonth = baseDate.plusMonths(i);
+            proj.put("mes", futureMonth.getYear() + "-" + String.format("%02d", futureMonth.getMonthValue()));
+            proj.put("total", Math.round(yPredicho * 100.0) / 100.0);
+            proj.put("tipo", "PREDICCION");
+            proyecciones.add(proj);
+        }
+        
+        return proyecciones;
     }
 
     public List<Map<String, Object>> resumenLogistica() {

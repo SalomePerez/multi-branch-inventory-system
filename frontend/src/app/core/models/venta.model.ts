@@ -19,6 +19,9 @@ export interface Venta {
   id: number;
   sucursalId: number;
   sucursalNombre: string;
+  sucursalDireccion?: string;
+  sucursalTelefono?: string;
+  sucursalEmail?: string;
   vendedorNombre: string;
   listaPrecioId?: number;
   listaPrecioNombre?: string;

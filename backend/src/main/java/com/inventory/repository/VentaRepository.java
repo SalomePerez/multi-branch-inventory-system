@@ -23,10 +23,20 @@ public interface VentaRepository extends JpaRepository<Venta, Long> {
             @Param("desde") LocalDateTime desde,
             @Param("hasta") LocalDateTime hasta);
 
+    @Query("SELECT v FROM Venta v WHERE v.createdAt BETWEEN :desde AND :hasta ORDER BY v.createdAt DESC")
+    List<Venta> findByPeriodo(
+            @Param("desde") LocalDateTime desde,
+            @Param("hasta") LocalDateTime hasta);
+
     @Query("SELECT COALESCE(SUM(v.total), 0) FROM Venta v WHERE v.sucursal.id = :sucursalId " +
            "AND v.createdAt BETWEEN :desde AND :hasta")
     BigDecimal sumTotalBySucursalAndPeriodo(
             @Param("sucursalId") Long sucursalId,
+            @Param("desde") LocalDateTime desde,
+            @Param("hasta") LocalDateTime hasta);
+
+    @Query("SELECT COALESCE(SUM(v.total), 0) FROM Venta v WHERE v.createdAt BETWEEN :desde AND :hasta")
+    BigDecimal sumTotalByPeriodo(
             @Param("desde") LocalDateTime desde,
             @Param("hasta") LocalDateTime hasta);
 
@@ -53,4 +63,26 @@ public interface VentaRepository extends JpaRepository<Venta, Long> {
                    "FROM ventas v " +
                    "GROUP BY mes ORDER BY mes DESC LIMIT :meses", nativeQuery = true)
     List<Object[]> findEvolucionMensual(@Param("meses") int meses);
+
+    @Query(value = "SELECT TO_CHAR(v.created_at, 'YYYY-MM') as mes, SUM(v.total) as total " +
+                   "FROM ventas v WHERE v.sucursal_id = :sucursalId " +
+                   "GROUP BY mes ORDER BY mes DESC LIMIT :meses", nativeQuery = true)
+    List<Object[]> findEvolucionMensualPorSucursal(@Param("meses") int meses, @Param("sucursalId") Long sucursalId);
+
+    @Query(value = "SELECT TO_CHAR(v.created_at, 'YYYY-MM') as mes, SUM(vi.cantidad) as total " +
+                   "FROM ventas v JOIN venta_items vi ON v.id = vi.venta_id " +
+                   "WHERE vi.producto_id = :productoId " +
+                   "GROUP BY mes ORDER BY mes DESC LIMIT :meses", nativeQuery = true)
+    List<Object[]> findEvolucionMensualPorProducto(
+            @Param("meses") int meses, 
+            @Param("productoId") Long productoId);
+
+    @Query(value = "SELECT TO_CHAR(v.created_at, 'YYYY-MM') as mes, SUM(vi.cantidad) as total " +
+                   "FROM ventas v JOIN venta_items vi ON v.id = vi.venta_id " +
+                   "WHERE v.sucursal_id = :sucursalId AND vi.producto_id = :productoId " +
+                   "GROUP BY mes ORDER BY mes DESC LIMIT :meses", nativeQuery = true)
+    List<Object[]> findEvolucionMensualPorSucursalYProducto(
+            @Param("meses") int meses, 
+            @Param("sucursalId") Long sucursalId, 
+            @Param("productoId") Long productoId);
 }

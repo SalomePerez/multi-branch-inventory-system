@@ -232,4 +232,8 @@ export class VentasComponent implements OnInit {
   }
 
   verDetalle(v: Venta) { this.ventaDetalle = v; }
+
+  imprimirVenta() {
+    window.print();
+  }
 }

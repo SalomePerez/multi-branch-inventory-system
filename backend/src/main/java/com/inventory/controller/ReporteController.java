@@ -51,6 +51,14 @@ public class ReporteController {
         return ResponseEntity.ok(reporteService.movimientosTodas(desde, hasta));
     }
 
+    @GetMapping("/ventas")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'GERENTE_SUCURSAL')")
+    public ResponseEntity<Map<String, Object>> resumenVentasTodas(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
+        return ResponseEntity.ok(reporteService.resumenVentasTodas(desde, hasta));
+    }
+
     @GetMapping("/ventas/{sucursalId}")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'GERENTE_SUCURSAL')")
     public ResponseEntity<Map<String, Object>> resumenVentas(
@@ -81,8 +89,20 @@ public class ReporteController {
 
     @GetMapping("/mensual")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'GERENTE_SUCURSAL')")
-    public ResponseEntity<List<Map<String, Object>>> evolucionMensual(@RequestParam(defaultValue = "6") int meses) {
-        return ResponseEntity.ok(reporteService.evolucionMensual(meses));
+    public ResponseEntity<List<Map<String, Object>>> evolucionMensual(
+            @RequestParam(defaultValue = "6") int meses,
+            @RequestParam(required = false) Long sucursalId,
+            @RequestParam(required = false) Long productoId) {
+        return ResponseEntity.ok(reporteService.evolucionMensual(meses, sucursalId, productoId));
+    }
+
+    @GetMapping("/prediccion")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'GERENTE_SUCURSAL')")
+    public ResponseEntity<List<Map<String, Object>>> prediccionDemanda(
+            @RequestParam(defaultValue = "6") int mesesHistoricos,
+            @RequestParam(required = false) Long sucursalId,
+            @RequestParam(required = false) Long productoId) {
+        return ResponseEntity.ok(reporteService.prediccionDemanda(mesesHistoricos, sucursalId, productoId));
     }
 
     @GetMapping("/logistica")

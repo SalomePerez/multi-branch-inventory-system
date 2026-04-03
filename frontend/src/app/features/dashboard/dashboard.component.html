@@ -51,38 +51,98 @@
         <div class="stat-value">{{ sucursales.length }}</div>
       </div>
     </div>
-  </div>  <!-- Analytics Sections -->
+  </div>
+
+  <!-- Analytics Controls -->
+  <section class="analysis-controls-card card" *ngIf="usuario?.rol !== 'OPERADOR_INVENTARIO'">
+    <div class="controls-header">
+      <lucide-icon name="filter" [size]="18"></lucide-icon>
+      <h3>Filtros de Análisis en Tiempo Real</h3>
+    </div>
+    <div class="controls-grid">
+      <div class="control-group" *ngIf="usuario?.rol === 'ADMINISTRADOR'">
+        <label><lucide-icon name="building-2" [size]="14"></lucide-icon> Filtrar por Sede:</label>
+        <select [(ngModel)]="sucursalSeleccionada" (change)="cargar()">
+          <option [ngValue]="null">Todas las sucursales (Global)</option>
+          @for (s of sucursales; track s.id) {
+            <option [ngValue]="s.id">{{ s.nombre }}</option>
+          }
+        </select>
+      </div>
+      <div class="control-group">
+        <label><lucide-icon name="package" [size]="14"></lucide-icon> Analizar Producto:</label>
+        <select [(ngModel)]="productoSeleccionado" (change)="cargar()">
+          <option [ngValue]="null">Todo el inventario (Resumen)</option>
+          @for (p of productos; track p.id) {
+            <option [ngValue]="p.id">{{ p.nombre }}</option>
+          }
+        </select>
+      </div>
+    </div>
+  </section>
+
+  <!-- Analytics Sections -->
   <div class="main-grid analytics-focus">
     
-    <!-- Evolución de Ventas (Strict Req: Mes en curso vs anteriores) -->
+    <!-- Evolución de Ventas (SaaS Refined) -->
     <div class="card chart-card full-width">
       <div class="card-header">
         <div class="header-title">
-          <h3>Evolución Trimestral de Ventas</h3>
-          <p class="card-subtitle">Volumen de ventas mensual consolidado</p>
+          <h3>Evolución mensual de ventas</h3>
+          <p class="card-subtitle">Comparativo de ventas históricos (6 meses)</p>
         </div>
-        @if (comparativaMensual) {
-          <div class="monthly-delta" [class.positive]="comparativaMensual.diferencia > 0">
-            <span class="value">{{ comparativaMensual.total | currency:'USD' }}</span>
-            <span class="percentage">
-              <lucide-icon [name]="comparativaMensual.diferencia > 0 ? 'trending-up' : 'trending-down'" [size]="14"></lucide-icon>
-              {{ comparativaMensual.diferencia | number:'1.1-1' }}% vs mes anterior
-            </span>
+        <div class="header-kpi">
+          <div class="kpi-item">
+            <span class="label">Total Acumulado:</span>
+            <span class="value">{{ totalAcumulado | currency:'USD' }}</span>
           </div>
-        }
-      </div>
-      <div class="chart-area visualization">
-        <!-- Dashboard Chart Visualization -->
-        <div class="chart-bars">
-          @for (m of ventasMensuales; track m.mes) {
-            <div class="bar-group">
-              <div class="bar" [style.height.%]="(m.valor / 8000) * 100">
-                <span class="tooltip">{{ m.valor | currency:'USD' }}</span>
-              </div>
-              <span class="label">{{ m.mes }}</span>
+          @if (comparativaMensual) {
+            <div class="kpi-item" [class.positive]="comparativaMensual.diferencia > 0">
+              <span class="label">Balance vs Mes Ant.:</span>
+              <span class="value">
+                <lucide-icon [name]="comparativaMensual.diferencia > 0 ? 'trending-up' : 'trending-down'" [size]="14"></lucide-icon>
+                {{ comparativaMensual.diferencia | number:'1.1-1' }}%
+              </span>
             </div>
           }
         </div>
+      </div>
+      <div class="chart-area visualization">
+        <div class="chart-wrapper">
+          <canvas baseChart
+            [data]="lineChartData"
+            [options]="lineChartOptions"
+            [type]="'line'">
+          </canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Predicción de Demanda Futura (New Requirement) -->
+    <div class="card chart-card full-width predictive-analysis">
+      <div class="card-header">
+        <div class="header-title">
+          <div class="badge predictive">AI Predictive Model</div>
+          <h3>Predicción de Demanda Futura</h3>
+          <p class="card-subtitle">Proyección estadística (Regresión Lineal) para los próximos 2 meses</p>
+        </div>
+        <div class="header-actions">
+           <div class="legend-item"><span class="dot real"></span> Histórico Real</div>
+           <div class="legend-item"><span class="dot estimated"></span> Estiración de Demanda</div>
+        </div>
+      </div>
+      <div class="chart-area visualization">
+        <div class="chart-wrapper">
+          <canvas baseChart
+            [data]="predictionChartData"
+            [options]="predictionChartOptions"
+            [type]="'line'">
+          </canvas>
+        </div>
+      </div>
+      <div class="card-footer predictive-info">
+        <lucide-icon name="info" [size]="16"></lucide-icon>
+        <p>Este modelo utiliza el historial de ventas para proyectar el consumo futuro, ayudando a optimizar el reabastecimiento en <strong>{{ sucursalSeleccionada ? 'esta sucursal' : 'toda la red' }}</strong>.</p>
       </div>
     </div>
 

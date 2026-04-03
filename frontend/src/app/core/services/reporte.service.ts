@@ -33,6 +33,11 @@ export class ReporteService {
     return this.http.get<any>(`${this.url}/ventas/${sucursalId}`, { params });
   }
 
+  resumenVentasTodas(desde: string, hasta: string): Observable<any> {
+    const params = new HttpParams().set('desde', desde).set('hasta', hasta);
+    return this.http.get<any>(`${this.url}/ventas`, { params });
+  }
+
   ranking(): Observable<any[]> {
     return this.http.get<any[]>(`${this.url}/ranking`);
   }
@@ -47,8 +52,25 @@ export class ReporteService {
     return this.http.get<any[]>(`${this.url}/demanda`, { params });
   }
 
-  mensual(meses: number = 6): Observable<any[]> {
-    const params = new HttpParams().set('meses', meses.toString());
+  mensual(meses: number = 6, sucursalId?: number | null, productoId?: number | null): Observable<any[]> {
+    let params = new HttpParams().set('meses', meses.toString());
+    if (sucursalId) {
+      params = params.set('sucursalId', sucursalId.toString());
+    }
+    if (productoId) {
+      params = params.set('productoId', productoId.toString());
+    }
     return this.http.get<any[]>(`${this.url}/mensual`, { params });
+  }
+
+  prediccion(mesesHistoricos: number = 6, sucursalId?: number | null, productoId?: number | null): Observable<any[]> {
+    let params = new HttpParams().set('mesesHistoricos', mesesHistoricos.toString());
+    if (sucursalId) {
+      params = params.set('sucursalId', sucursalId.toString());
+    }
+    if (productoId) {
+      params = params.set('productoId', productoId.toString());
+    }
+    return this.http.get<any[]>(`${this.url}/prediccion`, { params });
   }
 }

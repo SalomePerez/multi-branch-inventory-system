@@ -261,93 +261,97 @@ public class DataInitializer implements ApplicationRunner {
         BigDecimal pAur  = new BigDecimal("85.00"),   pTal = new BigDecimal("149.99");
         BigDecimal pPap  = new BigDecimal("8.50"),    pLapic = new BigDecimal("6.99");
 
-        // ── Abril 2025 (~$5,000) ──
-        v(cId, gcId, lapId,  2, pLap, 2025, 4,  5);
-        v(nId, gnId, monId,  4, pMon, 2025, 4,  8);
-        v(sId, gsId, mouId, 15, pMou, 2025, 4, 15);
-        v(cId, gcId, tecId,  5, pTec, 2025, 4, 22);
+        // ── Generar Ventas Dinámicas (12 meses hacia atrás) ──
+        LocalDateTime now = LocalDateTime.now();
+        
+        // Mes -11 (~$5,000)
+        v(cId, gcId, lapId,  2, pLap, now.minusMonths(11).withDayOfMonth(5).withHour(10));
+        v(nId, gnId, monId,  4, pMon, now.minusMonths(11).withDayOfMonth(8).withHour(10));
+        v(sId, gsId, mouId, 15, pMou, now.minusMonths(11).withDayOfMonth(15).withHour(10));
+        v(cId, gcId, tecId,  5, pTec, now.minusMonths(11).withDayOfMonth(22).withHour(10));
 
-        // ── Mayo 2025 (~$8,000) ──
-        v(cId, gcId, lapId,  3, pLap, 2025, 5,  3);
-        v(nId, gnId, monId,  5, pMon, 2025, 5,  7);
-        v(sId, gsId, tecId,  4, pTec, 2025, 5, 12);
-        v(cId, gcId, aurId,  8, pAur, 2025, 5, 18);
-        v(nId, gnId, mouId, 20, pMou, 2025, 5, 25);
+        // Mes -10 (~$8,000)
+        v(cId, gcId, lapId,  3, pLap, now.minusMonths(10).withDayOfMonth(3).withHour(10));
+        v(nId, gnId, monId,  5, pMon, now.minusMonths(10).withDayOfMonth(7).withHour(10));
+        v(sId, gsId, tecId,  4, pTec, now.minusMonths(10).withDayOfMonth(12).withHour(10));
+        v(cId, gcId, aurId,  8, pAur, now.minusMonths(10).withDayOfMonth(18).withHour(10));
+        v(nId, gnId, mouId, 20, pMou, now.minusMonths(10).withDayOfMonth(25).withHour(10));
 
-        // ── Junio 2025 (~$6,500) ──
-        v(cId, gcId, lapId,  2, pLap, 2025, 6,  4);
-        v(sId, gsId, monId,  3, pMon, 2025, 6, 10);
-        v(nId, gnId, dskId,  6, pDsk, 2025, 6, 16);
-        v(cId, gcId, tecId,  8, pTec, 2025, 6, 24);
+        // Mes -9 (~$6,500)
+        v(cId, gcId, lapId,  2, pLap, now.minusMonths(9).withDayOfMonth(4).withHour(10));
+        v(sId, gsId, monId,  3, pMon, now.minusMonths(9).withDayOfMonth(10).withHour(10));
+        v(nId, gnId, dskId,  6, pDsk, now.minusMonths(9).withDayOfMonth(16).withHour(10));
+        v(cId, gcId, tecId,  8, pTec, now.minusMonths(9).withDayOfMonth(24).withHour(10));
 
-        // ── Julio 2025 (~$10,500) ──
-        v(cId, gcId, lapId,  4, pLap, 2025, 7,  2);
-        v(nId, gnId, lapId,  2, pLap, 2025, 7,  8);
-        v(sId, gsId, monId,  5, pMon, 2025, 7, 14);
-        v(cId, gcId, aurId, 12, pAur, 2025, 7, 20);
-        v(nId, gnId, dskId,  8, pDsk, 2025, 7, 27);
+        // Mes -8 (~$10,500)
+        v(cId, gcId, lapId,  4, pLap, now.minusMonths(8).withDayOfMonth(2).withHour(10));
+        v(nId, gnId, lapId,  2, pLap, now.minusMonths(8).withDayOfMonth(8).withHour(10));
+        v(sId, gsId, monId,  5, pMon, now.minusMonths(8).withDayOfMonth(14).withHour(10));
+        v(cId, gcId, aurId, 12, pAur, now.minusMonths(8).withDayOfMonth(20).withHour(10));
+        v(nId, gnId, dskId,  8, pDsk, now.minusMonths(8).withDayOfMonth(27).withHour(10));
 
-        // ── Agosto 2025 (~$8,200) ──
-        v(cId, gcId, lapId,  2, pLap, 2025, 8,  5);
-        v(sId, gsId, lapId,  1, pLap, 2025, 8,  9);
-        v(nId, gnId, monId,  4, pMon, 2025, 8, 15);
-        v(cId, gcId, tecId, 10, pTec, 2025, 8, 22);
-        v(sId, gsId, aurId,  7, pAur, 2025, 8, 28);
+        // Mes -7 (~$8,200)
+        v(cId, gcId, lapId,  2, pLap, now.minusMonths(7).withDayOfMonth(5).withHour(10));
+        v(sId, gsId, lapId,  1, pLap, now.minusMonths(7).withDayOfMonth(9).withHour(10));
+        v(nId, gnId, monId,  4, pMon, now.minusMonths(7).withDayOfMonth(15).withHour(10));
+        v(cId, gcId, tecId, 10, pTec, now.minusMonths(7).withDayOfMonth(22).withHour(10));
+        v(sId, gsId, aurId,  7, pAur, now.minusMonths(7).withDayOfMonth(28).withHour(10));
 
-        // ── Septiembre 2025 (~$12,000) ──
-        v(cId, gcId, lapId,  5, pLap, 2025, 9,  3);
-        v(nId, gnId, lapId,  2, pLap, 2025, 9,  8);
-        v(sId, gsId, monId,  6, pMon, 2025, 9, 12);
-        v(cId, gcId, dskId, 10, pDsk, 2025, 9, 18);
-        v(nId, gnId, aurId, 12, pAur, 2025, 9, 24);
-        v(sId, gsId, tecId,  8, pTec, 2025, 9, 28);
+        // Mes -6 (~$12,000)
+        v(cId, gcId, lapId,  5, pLap, now.minusMonths(6).withDayOfMonth(3).withHour(10));
+        v(nId, gnId, lapId,  2, pLap, now.minusMonths(6).withDayOfMonth(8).withHour(10));
+        v(sId, gsId, monId,  6, pMon, now.minusMonths(6).withDayOfMonth(12).withHour(10));
+        v(cId, gcId, dskId, 10, pDsk, now.minusMonths(6).withDayOfMonth(18).withHour(10));
+        v(nId, gnId, aurId, 12, pAur, now.minusMonths(6).withDayOfMonth(24).withHour(10));
+        v(sId, gsId, tecId,  8, pTec, now.minusMonths(6).withDayOfMonth(28).withHour(10));
 
-        // ── Octubre 2025 (~$9,500) ──
-        v(cId, gcId, lapId,  3, pLap, 2025, 10,  4);
-        v(nId, gnId, monId,  5, pMon, 2025, 10,  9);
-        v(sId, gsId, tecId,  6, pTec, 2025, 10, 15);
-        v(cId, gcId, aurId, 10, pAur, 2025, 10, 21);
-        v(nId, gnId, dskId,  7, pDsk, 2025, 10, 28);
+        // Mes -5 (~$9,500)
+        v(cId, gcId, lapId,  3, pLap, now.minusMonths(5).withDayOfMonth(4).withHour(10));
+        v(nId, gnId, monId,  5, pMon, now.minusMonths(5).withDayOfMonth(9).withHour(10));
+        v(sId, gsId, tecId,  6, pTec, now.minusMonths(5).withDayOfMonth(15).withHour(10));
+        v(cId, gcId, aurId, 10, pAur, now.minusMonths(5).withDayOfMonth(21).withHour(10));
+        v(nId, gnId, dskId,  7, pDsk, now.minusMonths(5).withDayOfMonth(28).withHour(10));
 
-        // ── Noviembre 2025 (~$15,500) – pre-temporada ──
-        v(cId, gcId, lapId,  6, pLap, 2025, 11,  3);
-        v(nId, gnId, lapId,  3, pLap, 2025, 11,  7);
-        v(sId, gsId, lapId,  2, pLap, 2025, 11, 11);
-        v(cId, gcId, monId,  8, pMon, 2025, 11, 14);
-        v(nId, gnId, aurId, 15, pAur, 2025, 11, 18);
-        v(sId, gsId, dskId, 12, pDsk, 2025, 11, 22);
-        v(cId, gcId, tecId, 12, pTec, 2025, 11, 26);
+        // Mes -4 (~$15,500)
+        v(cId, gcId, lapId,  6, pLap, now.minusMonths(4).withDayOfMonth(3).withHour(10));
+        v(nId, gnId, lapId,  3, pLap, now.minusMonths(4).withDayOfMonth(7).withHour(10));
+        v(sId, gsId, lapId,  2, pLap, now.minusMonths(4).withDayOfMonth(11).withHour(10));
+        v(cId, gcId, monId,  8, pMon, now.minusMonths(4).withDayOfMonth(14).withHour(10));
+        v(nId, gnId, aurId, 15, pAur, now.minusMonths(4).withDayOfMonth(18).withHour(10));
+        v(sId, gsId, dskId, 12, pDsk, now.minusMonths(4).withDayOfMonth(22).withHour(10));
+        v(cId, gcId, tecId, 12, pTec, now.minusMonths(4).withDayOfMonth(26).withHour(10));
 
-        // ── Diciembre 2025 (~$21,000) – temporada alta ──
-        v(cId, gcId, lapId,  8, pLap, 2025, 12,  2);
-        v(nId, gnId, lapId,  4, pLap, 2025, 12,  6);
-        v(sId, gsId, lapId,  3, pLap, 2025, 12,  9);
-        v(cId, gcId, monId, 10, pMon, 2025, 12, 12);
-        v(nId, gnId, monId,  6, pMon, 2025, 12, 15);
-        v(cId, gcId, aurId, 18, pAur, 2025, 12, 18);
-        v(nId, gnId, dskId, 15, pDsk, 2025, 12, 21);
-        v(sId, gsId, tecId, 14, pTec, 2025, 12, 27);
+        // Mes -3 (~$21,000)
+        v(cId, gcId, lapId,  8, pLap, now.minusMonths(3).withDayOfMonth(2).withHour(10));
+        v(nId, gnId, lapId,  4, pLap, now.minusMonths(3).withDayOfMonth(6).withHour(10));
+        v(sId, gsId, lapId,  3, pLap, now.minusMonths(3).withDayOfMonth(9).withHour(10));
+        v(cId, gcId, monId, 10, pMon, now.minusMonths(3).withDayOfMonth(12).withHour(10));
+        v(nId, gnId, monId,  6, pMon, now.minusMonths(3).withDayOfMonth(15).withHour(10));
+        v(cId, gcId, aurId, 18, pAur, now.minusMonths(3).withDayOfMonth(18).withHour(10));
+        v(nId, gnId, dskId, 15, pDsk, now.minusMonths(3).withDayOfMonth(21).withHour(10));
+        v(sId, gsId, tecId, 14, pTec, now.minusMonths(3).withDayOfMonth(27).withHour(10));
 
-        // ── Enero 2026 (~$7,800) – post-fiestas ──
-        v(cId, gcId, lapId,  2, pLap, 2026, 1,  5);
-        v(nId, gnId, monId,  4, pMon, 2026, 1, 10);
-        v(sId, gsId, aurId,  8, pAur, 2026, 1, 18);
-        v(cId, gcId, tecId,  6, pTec, 2026, 1, 25);
+        // Mes -2 (~$7,800)
+        v(cId, gcId, lapId,  2, pLap, now.minusMonths(2).withDayOfMonth(5).withHour(10));
+        v(nId, gnId, monId,  4, pMon, now.minusMonths(2).withDayOfMonth(10).withHour(10));
+        v(sId, gsId, aurId,  8, pAur, now.minusMonths(2).withDayOfMonth(18).withHour(10));
+        v(cId, gcId, tecId,  6, pTec, now.minusMonths(2).withDayOfMonth(25).withHour(10));
 
-        // ── Febrero 2026 (~$9,500) ──
-        v(cId, gcId, lapId,  3, pLap, 2026, 2,  4);
-        v(nId, gnId, lapId,  1, pLap, 2026, 2,  9);
-        v(sId, gsId, monId,  5, pMon, 2026, 2, 14);
-        v(cId, gcId, dskId, 10, pDsk, 2026, 2, 20);
-        v(nId, gnId, aurId,  9, pAur, 2026, 2, 26);
+        // Mes -1 (~$9,500)
+        v(cId, gcId, lapId,  3, pLap, now.minusMonths(1).withDayOfMonth(4).withHour(10));
+        v(nId, gnId, lapId,  1, pLap, now.minusMonths(1).withDayOfMonth(9).withHour(10));
+        v(sId, gsId, monId,  5, pMon, now.minusMonths(1).withDayOfMonth(14).withHour(10));
+        v(cId, gcId, dskId, 10, pDsk, now.minusMonths(1).withDayOfMonth(20).withHour(10));
+        v(nId, gnId, aurId,  9, pAur, now.minusMonths(1).withDayOfMonth(26).withHour(10));
 
-        // ── Marzo 2026 (~$12,000) ──
-        v(cId, gcId, lapId,  4, pLap, 2026, 3,  5);
-        v(nId, gnId, lapId,  2, pLap, 2026, 3,  9);
-        v(sId, gsId, monId,  6, pMon, 2026, 3, 13);
-        v(cId, gcId, aurId, 12, pAur, 2026, 3, 18);
-        v(nId, gnId, dskId, 10, pDsk, 2026, 3, 22);
-        v(sId, gsId, tecId, 10, pTec, 2026, 3, 28);
+        // Mes actual (~$12,000)
+        int maxDay = now.getDayOfMonth() == 1 ? 1 : Math.min(28, now.getDayOfMonth() - 1);
+        v(cId, gcId, lapId,  4, pLap, now.withDayOfMonth(Math.max(1, maxDay - 10)).withHour(10));
+        v(nId, gnId, lapId,  2, pLap, now.withDayOfMonth(Math.max(1, maxDay - 8)).withHour(10));
+        v(sId, gsId, monId,  6, pMon, now.withDayOfMonth(Math.max(1, maxDay - 6)).withHour(10));
+        v(cId, gcId, aurId, 12, pAur, now.withDayOfMonth(Math.max(1, maxDay - 4)).withHour(10));
+        v(nId, gnId, dskId, 10, pDsk, now.withDayOfMonth(Math.max(1, maxDay - 2)).withHour(10));
+        v(sId, gsId, tecId, 10, pTec, now.withDayOfMonth(Math.max(1, maxDay)).withHour(10));
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -396,6 +400,14 @@ public class DataInitializer implements ApplicationRunner {
                 .producto(p).sucursal(s)
                 .cantidad(cantidad).stockMinimo(min).stockMaximo(max)
                 .build());
+                
+        jdbcTemplate.update(
+                "INSERT INTO movimientos (producto_id, sucursal_id, tipo, cantidad, cantidad_antes, cantidad_despues, " +
+                "referencia_id, referencia_tipo, usuario_id, motivo, observaciones, created_at) " +
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                p.getId(), s.getId(), "ENTRADA", cantidad, 0, cantidad, 
+                null, "INICIAL", null, "Stock Inicial", "Carga inicial de demostración", 
+                Timestamp.valueOf(LocalDateTime.now().minusMonths(12)));
     }
 
     private void alerta(String tipo, Producto p, Sucursal s, String msg) {
@@ -454,12 +466,20 @@ public class DataInitializer implements ApplicationRunner {
         transferenciaRepository.save(t);
     }
 
-    /** Inserta una venta con fecha backdateada + un item. */
+    /** Inserta una venta con fecha backdateada + un item y su movimiento. */
     private void v(long sucursalId, long vendedorId, long productoId,
-                   int cantidad, BigDecimal precio, int year, int month, int day) {
+                   int cantidad, BigDecimal precio, LocalDateTime fecha) {
         BigDecimal total = precio.multiply(BigDecimal.valueOf(cantidad));
-        Long ventaId = insertVenta(sucursalId, vendedorId, total, LocalDateTime.of(year, month, day, 10, 0));
+        Long ventaId = insertVenta(sucursalId, vendedorId, total, fecha);
         insertVentaItem(ventaId, productoId, cantidad, precio);
+        
+        jdbcTemplate.update(
+            "INSERT INTO movimientos (producto_id, sucursal_id, tipo, cantidad, cantidad_antes, cantidad_despues, " +
+            "referencia_id, referencia_tipo, usuario_id, motivo, observaciones, created_at) " +
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+            productoId, sucursalId, "SALIDA", cantidad * -1, 100, 100 - cantidad, 
+            ventaId, "VENTA", vendedorId, "Venta", "Venta histórica demostración", Timestamp.valueOf(fecha)
+        );
     }
 
     private Long insertVenta(long sucursalId, long vendedorId, BigDecimal total, LocalDateTime fecha) {

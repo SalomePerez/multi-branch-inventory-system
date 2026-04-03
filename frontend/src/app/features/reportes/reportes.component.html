@@ -8,6 +8,7 @@
       <div class="select-wrapper">
         <lucide-icon name="building-2" [size]="14"></lucide-icon>
         <select (change)="cambiarSucursal($event)">
+          <option [value]="'todas'" [selected]="sucursalSeleccionada === null">Todas las sedes</option>
           @for (s of sucursales; track s.id) {
             <option [value]="s.id" [selected]="s.id === sucursalSeleccionada">{{ s.nombre }}</option>
           }
@@ -68,12 +69,13 @@
   @if (tab === 'movimientos') {
     <div class="table-container">
       <table>
-        <thead><tr><th>Tipo</th><th>Producto</th><th>Antes</th><th>Cantidad</th><th>Después</th><th>Referencia</th><th>Usuario</th><th>Fecha</th></tr></thead>
+        <thead><tr><th>Tipo</th><th>Producto</th><th>Sucursal</th><th>Antes</th><th>Cantidad</th><th>Después</th><th>Referencia</th><th>Usuario</th><th>Fecha</th></tr></thead>
         <tbody>
           @for (m of movimientos; track m.id) {
             <tr>
               <td><span class="badge" [ngClass]="m.tipo.includes('ENTRADA') ? 'badge-success' : 'badge-danger'">{{ m.tipo }}</span></td>
               <td>{{ m.productoNombre }}</td>
+              <td>{{ m.sucursalNombre }}</td>
               <td>{{ m.cantidadAntes }}</td>
               <td [class.pos]="m.cantidad > 0">{{ m.tipo.includes('SALIDA') ? '-' : '+' }}{{ m.cantidad }}</td>
               <td>{{ m.cantidadDespues }}</td>
@@ -82,19 +84,25 @@
               <td class="date-col">{{ m.createdAt | date:'dd/MM/yy HH:mm' }}</td>
             </tr>
           } @empty {
-            <tr><td colspan="8" class="empty">Sin movimientos en el período</td></tr>
+            <tr><td colspan="9" class="empty">Sin movimientos en el período</td></tr>
           }
         </tbody>
       </table>
     </div>
   }
 
-  <!-- Resumen Ventas -->
+  <!-- Resumen Ventas Detallado -->
   @if (tab === 'ventas' && resumenVentas) {
-    <div class="resumen-ventas">
+    <div class="report-actions no-print">
+      <button class="btn-sm btn-edit" (click)="imprimirRegistro()">
+        <lucide-icon name="printer" [size]="14"></lucide-icon> Generar Registro de Ventas (PDF/Impreso)
+      </button>
+    </div>
+
+    <div class="resumen-ventas no-print">
       <div class="stat-card">
         <div class="stat-label">Período</div>
-        <div class="stat-value-sm">{{ resumenVentas.desde }} al {{ resumenVentas.hasta }}</div>
+        <div class="stat-value-sm">{{ resumenVentas.desde | date:'dd/MM/yyyy' }} al {{ resumenVentas.hasta | date:'dd/MM/yyyy' }}</div>
       </div>
       <div class="stat-card success">
         <div class="stat-label">Total Ventas</div>
@@ -105,5 +113,118 @@
         <div class="stat-value">{{ resumenVentas.cantidadVentas }}</div>
       </div>
     </div>
+
+    <div class="table-container no-print" style="margin-top: 24px;">
+      <div class="table-header">
+        <h4>Listado de Ventas</h4>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th># ID</th>
+            <th>Fecha y Hora</th>
+            <th>Sucursal</th>
+            <th>Vendedor</th>
+            <th>Artículos</th>
+            <th>Total Final</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (v of (resumenVentas.ventas || []); track v.id) {
+            <tr>
+              <td><code>#{{ v.id }}</code></td>
+              <td class="date-col">{{ v.createdAt | date:'dd/MM/yyyy HH:mm' }}</td>
+              <td>{{ v.sucursalNombre }}</td>
+              <td>{{ v.vendedorNombre }}</td>
+              <td>{{ v.items?.length || 0 }} artículos</td>
+              <td class="total">{{ v.total | currency:'USD' }}</td>
+            </tr>
+          } @empty {
+            <tr><td colspan="6" class="empty">No hay ventas en este período</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
   }
 </div>
+
+<!-- Plantilla de Impresión: Informe de Ventas (Solo visible al imprimir) -->
+@if (tab === 'ventas' && resumenVentas) {
+  <div id="print-report" class="print-only">
+    <div class="report-header">
+      <div class="report-logo">SISTEMA DE INVENTARIO — InvManager</div>
+      <h1>INFORME DE VENTAS</h1>
+      <div class="report-meta-grid">
+        <div>
+          <p><strong>Sucursal:</strong> {{ sucursalNombreActual }}</p>
+          <p><strong>Período:</strong> {{ resumenVentas.desde | date:'dd/MM/yyyy' }} — {{ resumenVentas.hasta | date:'dd/MM/yyyy' }}</p>
+        </div>
+        <div class="text-right">
+          <p><strong>Fecha de Generación:</strong></p>
+          <p>{{ today | date:'dd/MM/yyyy HH:mm' }}</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="report-kpi-row">
+      <div class="kpi-box">
+        <span class="kpi-label">Total de Ventas</span>
+        <strong class="kpi-value">{{ resumenVentas.cantidadVentas }}</strong>
+      </div>
+      <div class="kpi-box kpi-highlight">
+        <span class="kpi-label">Monto Total Recaudado</span>
+        <strong class="kpi-value">{{ resumenVentas.totalVentas | currency:'USD' }}</strong>
+      </div>
+      @if (resumenVentas.cantidadVentas > 0) {
+        <div class="kpi-box">
+          <span class="kpi-label">Ticket Promedio</span>
+          <strong class="kpi-value">{{ (resumenVentas.totalVentas / resumenVentas.cantidadVentas) | currency:'USD' }}</strong>
+        </div>
+      }
+    </div>
+
+    <h2 class="section-title">Detalle de Ventas</h2>
+
+    <table class="report-table">
+      <thead>
+        <tr>
+          <th style="width:6%">ID</th>
+          <th style="width:16%">Fecha y Hora</th>
+          <th style="width:16%">Sucursal</th>
+          <th style="width:16%">Vendedor</th>
+          <th>Productos</th>
+          <th style="width:6%" class="text-right">Artíc.</th>
+          <th style="width:13%" class="text-right">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (v of (resumenVentas.ventas || []); track v.id) {
+          <tr>
+            <td>#{{ v.id }}</td>
+            <td>{{ v.createdAt | date:'dd/MM/yy HH:mm' }}</td>
+            <td>{{ v.sucursalNombre }}</td>
+            <td>{{ v.vendedorNombre }}</td>
+            <td class="products-col">
+              @for (item of (v.items || []); track item.productoId; let last = $last) {
+                {{ item.productoNombre }} ×{{ item.cantidad }}{{ last ? '' : ' · ' }}
+              }
+            </td>
+            <td class="text-right text-muted">{{ v.items?.length || 0 }}</td>
+            <td class="text-right"><strong>{{ v.total | currency:'USD' }}</strong></td>
+          </tr>
+        }
+      </tbody>
+      <tfoot>
+        <tr class="report-total-row">
+          <td colspan="6" class="text-right"><strong>TOTAL RECAUDADO</strong></td>
+          <td class="text-right"><strong>{{ resumenVentas.totalVentas | currency:'USD' }}</strong></td>
+        </tr>
+      </tfoot>
+    </table>
+
+    <div class="report-footer">
+      <p>Documento generado automáticamente — Sistema de Inventario InvManager</p>
+      <small>Este informe es de carácter interno y destinado exclusivamente para auditoría y consulta administrativa.</small>
+    </div>
+  </div>
+}

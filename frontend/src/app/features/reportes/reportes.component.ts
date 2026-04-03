@@ -24,6 +24,7 @@ export class ReportesComponent implements OnInit {
   movimientos: any[] = [];
   resumenVentas: any = null;
   stockBajo: any[] = [];
+  today = new Date();
 
   filtroForm!: FormGroup;
 
@@ -52,7 +53,8 @@ export class ReportesComponent implements OnInit {
   }
 
   cambiarSucursal(event: Event) {
-    this.sucursalSeleccionada = +(event.target as HTMLSelectElement).value;
+    const val = (event.target as HTMLSelectElement).value;
+    this.sucursalSeleccionada = val === 'todas' ? null : +val;
     this.ejecutar();
   }
 
@@ -68,6 +70,7 @@ export class ReportesComponent implements OnInit {
   }
 
   cargarStock() {
+    this.error = '';
     this.reporteService.stockBajo().subscribe({
       next: d => {
         if (this.sucursalSeleccionada) {
@@ -81,20 +84,32 @@ export class ReportesComponent implements OnInit {
   }
 
   cargarMovimientos() {
-    if (!this.sucursalSeleccionada || this.filtroForm.invalid) return;
+    if (this.filtroForm.invalid) return;
+    this.error = '';
     this.loading = true;
     const { desde, hasta } = this.filtroForm.value;
-    this.reporteService.movimientos(this.sucursalSeleccionada, desde, hasta).subscribe({
+    
+    const obs = this.sucursalSeleccionada
+      ? this.reporteService.movimientos(this.sucursalSeleccionada, desde, hasta)
+      : this.reporteService.movimientosTodas(desde, hasta);
+
+    obs.subscribe({
       next: d => { this.movimientos = d; this.loading = false; },
       error: () => { this.error = 'Error'; this.loading = false; }
     });
   }
 
   cargarVentas() {
-    if (!this.sucursalSeleccionada || this.filtroForm.invalid) return;
+    if (this.filtroForm.invalid) return;
+    this.error = '';
     this.loading = true;
     const { desde, hasta } = this.filtroForm.value;
-    this.reporteService.resumenVentas(this.sucursalSeleccionada, desde, hasta).subscribe({
+
+    const obs = this.sucursalSeleccionada
+      ? this.reporteService.resumenVentas(this.sucursalSeleccionada, desde, hasta)
+      : this.reporteService.resumenVentasTodas(desde, hasta);
+
+    obs.subscribe({
       next: d => { this.resumenVentas = d; this.loading = false; },
       error: () => { this.error = 'Error'; this.loading = false; }
     });
@@ -140,5 +155,13 @@ export class ReportesComponent implements OnInit {
     a.download = `${nombre}-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+  }
+
+  imprimirRegistro() {
+    window.print();
+  }
+
+  get sucursalNombreActual(): string {
+    return this.sucursales.find(s => s.id === this.sucursalSeleccionada)?.nombre || 'Todas las sedes';
   }
 }

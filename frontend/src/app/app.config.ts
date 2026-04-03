@@ -31,8 +31,12 @@ import {
   TrendingUp,
   TrendingDown,
   Info,
-  Shield
+  Shield,
+  Printer,
+  Phone,
+  Mail
 } from 'lucide-angular';
+import { provideCharts, withDefaultRegisterables } from 'ng2-charts';
 import { routes } from './app.routes';
 import { authInterceptor } from './core/interceptors/auth.interceptor';
 
@@ -41,6 +45,7 @@ export const appConfig: ApplicationConfig = {
     provideRouter(routes),
     provideHttpClient(withInterceptors([authInterceptor])),
     provideAnimations(),
+    provideCharts(withDefaultRegisterables()),
     importProvidersFrom(LucideAngularModule.pick({
       LayoutDashboard,
       Package,
@@ -68,7 +73,10 @@ export const appConfig: ApplicationConfig = {
       TrendingUp,
       TrendingDown,
       Info,
-      Shield
+      Shield,
+      Printer,
+      Phone,
+      Mail
     }))
   ]
 };

@@ -1,0 +1,52 @@
+@use '../../../styles/shared' as *;
+
+.sucursal-select { padding: 8px 12px; border: 2px solid $border; border-radius: 6px; font-size: 0.9rem; outline: none; }
+.header-actions { display: flex; gap: 12px; align-items: center; }
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 20px;
+  border-bottom: 2px solid $border;
+
+  button {
+    padding: 10px 20px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: #666;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    transition: all 0.2s;
+
+    &:hover { color: $primary; }
+    &.active { color: $primary; font-weight: 700; border-bottom-color: $primary; }
+  }
+}
+
+.filtros {
+  display: flex;
+  gap: 16px;
+  align-items: flex-end;
+  margin-bottom: 20px;
+  background: white;
+  padding: 16px;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+
+  .form-group { margin-bottom: 0; min-width: 160px; }
+}
+
+.qty-low { color: $danger; font-weight: 700; }
+.date-col { font-size: 0.82rem; color: #777; }
+.pos { color: $success; font-weight: 600; }
+
+.resumen-ventas {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+  margin-top: 8px;
+
+  .stat-value-sm { font-size: 1rem; font-weight: 600; color: $primary; }
+}

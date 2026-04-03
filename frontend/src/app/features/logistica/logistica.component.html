@@ -1,0 +1,378 @@
+<div class="page">
+  <div class="page-header">
+    <div class="title-section">
+      <h2>Logística y Envíos</h2>
+      <p class="subtitle">Seguimiento de transferencias entre sucursales</p>
+    </div>
+    <div class="header-stats">
+      <div class="h-stat">
+        <span class="l">En Tránsito</span>
+        <span class="v">{{ stats.enTransito }}</span>
+      </div>
+      <div class="h-stat">
+        <span class="l">Pendientes</span>
+        <span class="v">{{ stats.pendientesEnvio }}</span>
+      </div>
+    </div>
+  </div>
+
+  @if (success) { <div class="alert-success">{{ success }}</div> }
+  @if (error) { <div class="alert-error">{{ error }}</div> }
+
+  <div class="card">
+    <div class="card-header">
+      <h3>Lista de Envíos Activos</h3>
+      <button class="btn-sm btn-secondary" (click)="cargar()">
+        <lucide-icon name="refresh-cw" [size]="14"></lucide-icon> Actualizar
+      </button>
+    </div>
+
+    @if (loading && envios.length === 0) {
+      <div class="loading">Cargando envíos...</div>
+    } @else {
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Origen / Destino</th>
+              <th>Ruta / Prioridad</th>
+              <th>Estado / Progreso</th>
+              <th>Tiempos (Est. vs Real)</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (e of envios; track e.id) {
+              <tr>
+                <td><code>#{{ e.id }}</code></td>
+                <td>
+                  <div class="route-info">
+                    <div class="branch-flow">
+                      <span>{{ e.sucursalOrigenNombre }}</span>
+                      <lucide-icon name="arrow-right" [size]="12"></lucide-icon>
+                      <span>{{ e.sucursalDestinoNombre }}</span>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <div class="logistics-meta">
+                    <span class="route-tag">{{ e.rutaNombre || 'Sin asignar' }}</span>
+                    <span class="priority-tag" [ngClass]="e.prioridad?.toLowerCase()">{{ e.prioridad }}</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="status-col">
+                    <span class="badge-status" [ngClass]="getEstadoClass(e.estado)">
+                      {{ getEstadoLabel(e.estado) }}
+                    </span>
+                    
+                    <div class="timeline-stepper">
+                      <div class="step" [class.completed]="e.estado !== 'PENDIENTE'">
+                        <div class="dot"></div>
+                      </div>
+                      <div class="step" [class.completed]="e.estado === 'EN_TRANSITO' || e.estado === 'COMPLETADA' || e.estado === 'INCOMPLETA'" [class.active]="e.estado === 'APROBADA'">
+                        <div class="dot"></div>
+                      </div>
+                      <div class="step" [class.completed]="e.estado === 'COMPLETADA' || e.estado === 'INCOMPLETA'" [class.active]="e.estado === 'EN_TRANSITO'">
+                        <div class="dot"></div>
+                      </div>
+                      <div class="step" [class.completed]="e.estado === 'COMPLETADA' || e.estado === 'INCOMPLETA'">
+                        <div class="dot"></div>
+                      </div>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <div class="time-info">
+                    @if (e.fechaEstimadaLlegada) {
+                      <div class="time-row">
+                        <span class="label">ETA:</span>
+                        <span class="val">{{ e.fechaEstimadaLlegada | date:'short' }}</span>
+                      </div>
+                    }
+                    @if (e.fechaRealLlegada) {
+                      <div class="time-row" [class.delayed]="isDelayed(e)">
+                        <span class="label">Real:</span>
+                        <span class="val">{{ e.fechaRealLlegada | date:'short' }}</span>
+                      </div>
+                    } @else if (e.estado === 'EN_TRANSITO') {
+                      <div class="carrier-info">
+                        <lucide-icon name="truck" [size]="12"></lucide-icon>
+                        <span>{{ e.transportista || 'En camino' }}</span>
+                      </div>
+                    }
+                  </div>
+                </td>
+                <td class="actions">
+                  @if (e.estado === 'APROBADA') {
+                    <div class="btn-group">
+                      <button class="btn-sm btn-primary" (click)="abrirModalDespacho(e)">
+                        <lucide-icon name="truck" [size]="14"></lucide-icon> Despachar
+                      </button>
+                      @if (esAdminOGerente) {
+                        <button class="btn-sm btn-danger" (click)="abrirModalRechazo(e)">
+                          <lucide-icon name="x-circle" [size]="14"></lucide-icon> Rechazar
+                        </button>
+                      }
+                    </div>
+                  }
+                  @if (e.estado === 'EN_TRANSITO') {
+                    <button class="btn-sm btn-success" (click)="abrirModalRecepcion(e)">
+                      <lucide-icon name="check-circle-2" [size]="14"></lucide-icon> Recibir
+                    </button>
+                  }
+                </td>
+              </tr>
+            } @empty {
+              <tr><td colspan="7" class="empty">No hay envíos activos en este momento</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+
+  <div class="main-grid split-2">
+    <div class="card analytics-card">
+      <div class="card-header">
+        <h3>Cumplimiento por Ruta</h3>
+        <p class="card-subtitle">Histórico de entregas a tiempo por ruta logística</p>
+      </div>
+      <div class="compliance-view">
+        @for (r of reporteLogistica; track r.ruta) {
+          <div class="compliance-item">
+            <div class="c-info">
+              <strong>{{ r.ruta }}</strong>
+              <small class="route-origin">Origen: {{ r.sucursalOrigen }}</small>
+              <span class="rate">{{ r.tasaCumplimiento }}% de éxito</span>
+            </div>
+            <div class="stats-row">
+              <span>{{ r.aTiempo }} a tiempo / {{ r.completados }} completados</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress" [style.width.%]="r.tasaCumplimiento" [class.low]="r.tasaCumplimiento < 70"></div>
+            </div>
+          </div>
+        } @empty {
+          <div class="empty-state">No hay datos de cumplimiento aún</div>
+        }
+      </div>
+    </div>
+
+    <div class="card analytics-card">
+      <div class="card-header">
+        <h3>Cumplimiento por Sucursal</h3>
+        <p class="card-subtitle">Rendimiento logístico por sede de origen</p>
+      </div>
+      <div class="compliance-view">
+        @for (s of reporteSucursal; track s.sucursal) {
+          <div class="compliance-item">
+            <div class="c-info">
+              <strong>{{ s.sucursal }}</strong>
+              <small class="route-origin">{{ s.rutasActivas }} ruta(s) activa(s)</small>
+              <span class="rate">{{ s.tasaCumplimiento }}% cumplimiento</span>
+            </div>
+            <div class="stats-row">
+              <span>{{ s.aTiempo }} a tiempo / {{ s.completados }} completados / {{ s.totalEnvios }} totales</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress" [style.width.%]="s.tasaCumplimiento" [class.low]="s.tasaCumplimiento < 70"></div>
+            </div>
+          </div>
+        } @empty {
+          <div class="empty-state">No hay datos por sucursal aún</div>
+        }
+      </div>
+    </div>
+  </div>
+
+  <div class="main-grid split-2 mt-8">
+    <div class="card analytics-card">
+      <div class="card-header">
+        <h3>Alertas Logísticas</h3>
+      </div>
+      <div class="logistics-alerts">
+        @for (e of getDelayedEnvios(); track e.id) {
+          <div class="mini-alert warning">
+            <lucide-icon name="clock" [size]="14"></lucide-icon>
+            <span>Envío #{{ e.id }} demorado en {{ e.rutaNombre }}</span>
+          </div>
+        } @empty {
+          <div class="empty-state">
+            <lucide-icon name="check-circle" [size]="32"></lucide-icon>
+            <p>Todas las entregas están a tiempo</p>
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+
+  @if (mostrarModalRechazo) {
+    <div class="modal-overlay">
+      <div class="modal-content enhanced-modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3>Rechazar Envío #{{ envioSeleccionado?.id }}</h3>
+          <button class="btn-close" (click)="mostrarModalRechazo = false">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Motivo del rechazo *</label>
+            <textarea [(ngModel)]="motivoRechazo" rows="3" placeholder="Indique el motivo por el cual se rechaza este envío..."></textarea>
+          </div>
+          @if (errorModal) {
+            <div class="alert-error">{{ errorModal }}</div>
+          }
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" (click)="mostrarModalRechazo = false">Cancelar</button>
+          <button class="btn btn-primary" style="background:#ef4444" (click)="confirmarRechazo()" [disabled]="!motivoRechazo.trim()">
+            Confirmar Rechazo
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (mostrarModalRecepcion) {
+    <div class="modal-overlay">
+      <div class="modal-content enhanced-modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3>Confirmar Recepción — Envío #{{ envioRecepcion?.id }}</h3>
+          <button class="btn-close" (click)="mostrarModalRecepcion = false">×</button>
+        </div>
+        <div class="modal-body">
+          <p class="text-sm" style="color:#64748b; margin-bottom:12px;">
+            Ingrese las cantidades realmente recibidas. Si recibió menos que lo enviado, se registrará como <strong>recepción parcial</strong>.
+          </p>
+          <table class="summary-table">
+            <thead><tr><th>Producto</th><th>Enviado</th><th>Recibido</th></tr></thead>
+            <tbody>
+              @for (item of recepcionItems; track item; let i = $index) {
+                <tr>
+                  <td>{{ item.productoNombre }}</td>
+                  <td>{{ item.cantidadEnviada }}</td>
+                  <td>
+                    <input type="number" [(ngModel)]="recepcionItems[i].cantidadRecibida"
+                           [min]="0" [max]="item.cantidadEnviada"
+                           style="width:80px; padding:4px 8px; border:1px solid #e2e8f0; border-radius:6px; text-align:center">
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+          @if (errorModal) {
+            <div class="alert-error" style="margin-top:12px">{{ errorModal }}</div>
+          }
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" (click)="mostrarModalRecepcion = false">Cancelar</button>
+          <button class="btn btn-primary" (click)="confirmarRecepcionParcial()">
+            Confirmar Recepción
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (mostrarModalDespacho) {
+    <div class="modal-overlay">
+      <div class="modal-content enhanced-modal">
+        <div class="modal-header">
+          <h3>Despachar Envío #{{ envioSeleccionado?.id }}</h3>
+          <button class="btn-close" (click)="mostrarModalDespacho = false">×</button>
+        </div>
+        <div class="modal-body">
+          <!-- Resumen de Carga (Impacto en Inventario) -->
+          <div class="dispatch-summary mb-4">
+            <h4 class="text-xs font-bold uppercase text-slate-500 mb-2">Impacto en Inventario</h4>
+            <div class="summary-table-container">
+              <table class="summary-table">
+                <thead>
+                  <tr>
+                    <th>Producto</th>
+                    <th>Cant.</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (item of envioSeleccionado?.items; track item.productoId) {
+                    <tr>
+                      <td>{{ item.productoNombre }}</td>
+                      <td><span class="badge-status badge-info">{{ item.cantidadSolicitada }}</span></td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Trazabilidad -->
+          <div class="audit-info">
+            <div class="operator-badge">
+              <lucide-icon name="user" [size]="14"></lucide-icon>
+              <span>Responsable: <strong>{{ operadorActual }}</strong></span>
+            </div>
+            <div class="stock-check">
+              <lucide-icon name="check-circle" [size]="14"></lucide-icon>
+              <span>Stock verificado y reservado</span>
+            </div>
+          </div>
+
+          <div class="form-grid mt-4">
+            <div class="form-group">
+              <label>Transportista *</label>
+              <input type="text" [(ngModel)]="despachoData.transportista" placeholder="Ej: DHL, Propia...">
+            </div>
+            <div class="form-group">
+              <label>Tipo de Ruta</label>
+              <select [(ngModel)]="despachoData.tipoRuta">
+                <option value="ESTANDAR">Estándar</option>
+                <option value="EXPRESS">Express / Priority</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Fecha y Hora Est. de Entrega</label>
+              <div class="date-suggest-container">
+                <input type="datetime-local" [(ngModel)]="despachoData.fechaEstimadaLlegada" name="fechaEstimada">
+                <div class="duration-chips mt-2">
+                  <button type="button" class="chip" (click)="sugerirTiempo(4)">4h (Urbano)</button>
+                  <button type="button" class="chip" (click)="sugerirTiempo(24)">24h (Express)</button>
+                  <button type="button" class="chip" (click)="sugerirTiempo(72)">3d (Nacional)</button>
+                </div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Prioridad</label>
+              <select [(ngModel)]="despachoData.prioridad">
+                <option value="NORMAL">Normal</option>
+                <option value="ALTA">Alta</option>
+                <option value="URGENTE">Urgente</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Tiempo Est. (Hrs)</label>
+              <input type="number" [(ngModel)]="despachoData.tiempoTransitoEstimado">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Observaciones / Notas</label>
+            <textarea [(ngModel)]="despachoData.notas" rows="2" placeholder="Notas para el conductor..."></textarea>
+          </div>
+        </div>
+        @if (errorModal) {
+          <div class="alert-error modal-error">{{ errorModal }}</div>
+        }
+        <div class="modal-footer">
+          <button class="btn btn-secondary" (click)="mostrarModalDespacho = false">Cancelar</button>
+          <button class="btn btn-primary" (click)="confirmarDespacho()" [disabled]="!despachoData.transportista">
+            Confirmar y Despachar
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

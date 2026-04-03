@@ -1,0 +1,109 @@
+<div class="page">
+  <div class="page-header">
+    <div class="title-section">
+      <h2>Reportes</h2>
+      <p class="subtitle">Análisis de ventas, movimientos y stock por sucursal con exportación CSV</p>
+    </div>
+    <div class="header-actions">
+      <div class="select-wrapper">
+        <lucide-icon name="building-2" [size]="14"></lucide-icon>
+        <select (change)="cambiarSucursal($event)">
+          @for (s of sucursales; track s.id) {
+            <option [value]="s.id" [selected]="s.id === sucursalSeleccionada">{{ s.nombre }}</option>
+          }
+        </select>
+      </div>
+      <button class="btn-secondary" (click)="exportarCSV()">↓ Exportar CSV</button>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button [class.active]="tab === 'stock'" (click)="cambiarTab('stock')">Stock bajo mínimo</button>
+    <button [class.active]="tab === 'movimientos'" (click)="cambiarTab('movimientos')">Movimientos</button>
+    <button [class.active]="tab === 'ventas'" (click)="cambiarTab('ventas')">Resumen Ventas</button>
+  </div>
+
+  <!-- Filtros de fecha para movimientos y ventas -->
+  @if (tab !== 'stock') {
+    <form [formGroup]="filtroForm" (ngSubmit)="ejecutar()" class="filtros">
+      <div class="form-group">
+        <label>Desde</label>
+        <input type="date" formControlName="desde" />
+      </div>
+      <div class="form-group">
+        <label>Hasta</label>
+        <input type="date" formControlName="hasta" />
+      </div>
+      <button type="submit" class="btn-primary">Consultar</button>
+    </form>
+  }
+
+  @if (loading) { <p class="loading">Cargando...</p> }
+  @if (error)   { <div class="alert-error">{{ error }}</div> }
+
+  <!-- Stock bajo -->
+  @if (tab === 'stock') {
+    <div class="table-container">
+      <table>
+        <thead><tr><th>Producto</th><th>SKU</th><th>Sucursal</th><th>Cantidad</th><th>Mínimo</th></tr></thead>
+        <tbody>
+          @for (i of stockBajo; track i.id) {
+            <tr>
+              <td>{{ i.productoNombre }}</td>
+              <td><code>{{ i.productoSku }}</code></td>
+              <td>{{ i.sucursalNombre }}</td>
+              <td class="qty-low">{{ i.cantidad }}</td>
+              <td>{{ i.stockMinimo }}</td>
+            </tr>
+          } @empty {
+            <tr><td colspan="5" class="empty">No hay productos bajo stock mínimo</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  <!-- Movimientos -->
+  @if (tab === 'movimientos') {
+    <div class="table-container">
+      <table>
+        <thead><tr><th>Tipo</th><th>Producto</th><th>Antes</th><th>Cantidad</th><th>Después</th><th>Referencia</th><th>Usuario</th><th>Fecha</th></tr></thead>
+        <tbody>
+          @for (m of movimientos; track m.id) {
+            <tr>
+              <td><span class="badge" [ngClass]="m.tipo.includes('ENTRADA') ? 'badge-success' : 'badge-danger'">{{ m.tipo }}</span></td>
+              <td>{{ m.productoNombre }}</td>
+              <td>{{ m.cantidadAntes }}</td>
+              <td [class.pos]="m.cantidad > 0">{{ m.tipo.includes('SALIDA') ? '-' : '+' }}{{ m.cantidad }}</td>
+              <td>{{ m.cantidadDespues }}</td>
+              <td>{{ m.referenciaTipo }} #{{ m.referenciaId }}</td>
+              <td>{{ m.usuarioNombre }}</td>
+              <td class="date-col">{{ m.createdAt | date:'dd/MM/yy HH:mm' }}</td>
+            </tr>
+          } @empty {
+            <tr><td colspan="8" class="empty">Sin movimientos en el período</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  <!-- Resumen Ventas -->
+  @if (tab === 'ventas' && resumenVentas) {
+    <div class="resumen-ventas">
+      <div class="stat-card">
+        <div class="stat-label">Período</div>
+        <div class="stat-value-sm">{{ resumenVentas.desde }} al {{ resumenVentas.hasta }}</div>
+      </div>
+      <div class="stat-card success">
+        <div class="stat-label">Total Ventas</div>
+        <div class="stat-value">{{ resumenVentas.totalVentas | currency:'USD' }}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Cantidad de Ventas</div>
+        <div class="stat-value">{{ resumenVentas.cantidadVentas }}</div>
+      </div>
+    </div>
+  }
+</div>

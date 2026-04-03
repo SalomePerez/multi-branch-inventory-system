@@ -1,0 +1,111 @@
+<div class="shell-layout">
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="logo">
+        <div class="logo-icon"><lucide-icon name="package" [size]="24"></lucide-icon></div>
+        <h1>InvManager</h1>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section">
+        <span class="section-title">PRINCIPAL</span>
+        <ul class="nav-links">
+          <li routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">
+            <a routerLink="/dashboard">
+              <lucide-icon name="layout-dashboard" [size]="20"></lucide-icon>
+              <span>Dashboard</span>
+            </a>
+          </li>
+          <li routerLinkActive="active">
+            <a routerLink="/inventario">
+              <lucide-icon name="package" [size]="20"></lucide-icon>
+              <span>Inventario por Sede</span>
+            </a>
+          </li>
+          <li routerLinkActive="active">
+            <a routerLink="/productos">
+              <lucide-icon name="boxes" [size]="20"></lucide-icon>
+              <span>Catálogo de Producto</span>
+            </a>
+          </li>
+          <li routerLinkActive="active">
+            <a routerLink="/inventario/movimientos">
+              <lucide-icon name="history" [size]="20"></lucide-icon>
+              <span>Historial de Movimientos</span>
+            </a>
+          </li>
+          
+          <div class="nav-divider"></div>
+          
+          <li routerLinkActive="active">
+            <a routerLink="/ventas">
+              <lucide-icon name="shopping-cart" [size]="20"></lucide-icon>
+              <span>Ventas</span>
+            </a>
+          </li>
+          <li routerLinkActive="active">
+            <a routerLink="/compras">
+              <lucide-icon name="shopping-bag" [size]="20"></lucide-icon>
+              <span>Compras</span>
+            </a>
+          </li>
+          <li routerLinkActive="active">
+            <a routerLink="/transferencias">
+              <lucide-icon name="arrow-left-right" [size]="20"></lucide-icon>
+              <span>Transferencias</span>
+            </a>
+          </li>
+          
+          @if (authService.user()?.rol === 'ADMINISTRADOR' || authService.user()?.rol === 'GERENTE_SUCURSAL') {
+            <li routerLinkActive="active">
+              <a routerLink="/logistica">
+                <lucide-icon name="truck" [size]="20"></lucide-icon>
+                <span>Logística</span>
+              </a>
+            </li>
+            <li routerLinkActive="active">
+              <a routerLink="/reportes">
+                <lucide-icon name="bar-chart-3" [size]="20"></lucide-icon>
+                <span>Reportes y Análisis</span>
+              </a>
+            </li>
+          }
+        </ul>
+      </div>
+
+      @if (authService.user()?.rol === 'ADMINISTRADOR') {
+        <div class="nav-section">
+          <span class="section-title">SISTEMA</span>
+          <ul class="nav-links">
+            <li routerLinkActive="active">
+              <a routerLink="/admin">
+                <lucide-icon name="shield" [size]="20"></lucide-icon>
+                <span>Administración</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+      }
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="user-info">
+        <div class="user-avatar"><lucide-icon name="user" [size]="18"></lucide-icon></div>
+        <div class="user-details">
+          <strong>{{ authService.user()?.nombre }}</strong>
+          <small>{{ authService.user()?.rol }}</small>
+        </div>
+      </div>
+      <button class="btn-logout" (click)="logout()" title="Cerrar Sesión">
+        <lucide-icon name="log-out" [size]="18"></lucide-icon>
+      </button>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <div class="content-wrapper">
+      <router-outlet></router-outlet>
+    </div>
+  </main>
+</div>

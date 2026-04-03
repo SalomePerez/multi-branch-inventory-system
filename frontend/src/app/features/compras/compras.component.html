@@ -1,0 +1,284 @@
+<div class="page">
+  <div class="page-header">
+    <div class="title-section">
+      <h2>Órdenes de Compra</h2>
+      <p class="subtitle">Gestión de compras a proveedores con flujo de aprobación y recepción de stock</p>
+    </div>
+    <div class="header-actions">
+      @if (verTodas) {
+        <span class="badge badge-info item-filter">Todas las sucursales</span>
+        <button class="btn-sm btn-secondary" (click)="toggleVerTodas()">Ver mi sucursal</button>
+      } @else {
+        <div class="select-wrapper">
+          <lucide-icon name="building-2" [size]="14"></lucide-icon>
+          <select (change)="cambiarSucursal($event)">
+            @for (s of sucursales; track s.id) {
+              <option [value]="s.id" [selected]="s.id === sucursalSeleccionada">{{ s.nombre }}</option>
+            }
+          </select>
+        </div>
+        @if (isGerenteOrAdmin) {
+          <button class="btn-sm btn-secondary" (click)="toggleVerTodas()">Ver todas</button>
+        }
+      }
+      <button class="btn-primary" (click)="abrirFormulario()">+ Nueva Orden</button>
+    </div>
+  </div>
+
+  @if (success) { <div class="alert-success">{{ success }}</div> }
+  @if (error && !mostrarFormulario) { <div class="alert-error">{{ error }}</div> }
+
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr><th>#</th><th>Proveedor</th><th>Estado</th><th>Total</th><th>Plazo Pago</th><th>Creado por</th><th>Fecha</th><th>Acciones</th></tr>
+      </thead>
+      <tbody>
+        @for (o of ordenes; track o.id) {
+          <tr>
+            <td>{{ o.id }}</td>
+            <td>{{ o.proveedor }}</td>
+            <td><span class="badge" [ngClass]="getBadgeClass(o.estado)">{{ o.estado }}</span></td>
+            <td class="total">{{ o.total | currency:'USD' }}</td>
+            <td>{{ o.plazoPago === 0 ? 'Contado' : o.plazoPago + ' días' }}</td>
+            <td>{{ o.creadoPorNombre }}</td>
+            <td class="date-col">{{ o.createdAt | date:'dd/MM/yy' }}</td>
+            <td class="actions">
+              <button class="btn-sm btn-info" (click)="verDetalle(o)">Ver</button>
+              @if (o.estado === 'PENDIENTE') {
+                <button class="btn-sm btn-success" (click)="aprobar(o.id)">Aprobar</button>
+                <button class="btn-sm btn-danger" (click)="cancelar(o.id)">Cancelar</button>
+              }
+              @if (o.estado === 'APROBADA') {
+                <button class="btn-sm btn-warning" (click)="recibir(o.id)">Recibir</button>
+              }
+            </td>
+          </tr>
+        } @empty {
+          <tr><td colspan="8" class="empty">No hay órdenes registradas</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- CPP — Costo Promedio Ponderado                               -->
+  <!-- ============================================================ -->
+  @if (isGerenteOrAdmin) {
+    <div class="section-card">
+      <h3 class="section-title">Costo Promedio Ponderado (CPP)</h3>
+      <div class="filter-row">
+        <select (change)="onCppProductoChange($event)" class="select-input">
+          <option value="">Seleccione un producto...</option>
+          @for (p of productos; track p.id) {
+            <option [value]="p.id">{{ p.sku }} — {{ p.nombre }}</option>
+          }
+        </select>
+        <button class="btn-primary btn-sm" (click)="buscarCpp()" [disabled]="!cppProductoId || cppLoading">
+          {{ cppLoading ? 'Calculando...' : 'Calcular CPP' }}
+        </button>
+      </div>
+      @if (cppResult) {
+        <div class="cpp-card">
+          <div class="cpp-stat">
+            <span class="cpp-label">Producto</span>
+            <span class="cpp-value">{{ cppResult.productoNombre }}</span>
+          </div>
+          <div class="cpp-stat">
+            <span class="cpp-label">CPP</span>
+            <span class="cpp-value highlight">{{ cppResult.cpp | currency:'USD':'symbol':'1.2-4' }}</span>
+          </div>
+          <div class="cpp-stat">
+            <span class="cpp-label">Total unidades compradas</span>
+            <span class="cpp-value">{{ cppResult.totalUnidades }}</span>
+          </div>
+          <div class="cpp-stat">
+            <span class="cpp-label">Total invertido</span>
+            <span class="cpp-value">{{ cppResult.totalInvertido | currency:'USD' }}</span>
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- ============================================================ -->
+  <!-- Histórico de compras                                         -->
+  <!-- ============================================================ -->
+  @if (isGerenteOrAdmin) {
+    <div class="section-card">
+      <h3 class="section-title">Histórico de Compras</h3>
+      <div class="tabs">
+        <button class="tab-btn" [class.active]="historicoModo === 'proveedor'" (click)="cambiarModoHistorico('proveedor')">Por Proveedor</button>
+        <button class="tab-btn" [class.active]="historicoModo === 'producto'" (click)="cambiarModoHistorico('producto')">Por Producto</button>
+      </div>
+
+      <div class="filter-row">
+        @if (historicoModo === 'proveedor') {
+          <input
+            class="text-input"
+            type="text"
+            placeholder="Nombre del proveedor..."
+            [(ngModel)]="historicoProveedor"
+            [ngModelOptions]="{standalone: true}"
+          />
+        } @else {
+          <select class="select-input" (change)="onHistoricoProductoChange($event)">
+            <option value="">Seleccione un producto...</option>
+            @for (p of productos; track p.id) {
+              <option [value]="p.id">{{ p.sku }} — {{ p.nombre }}</option>
+            }
+          </select>
+        }
+        <button class="btn-primary btn-sm" (click)="buscarHistorico()" [disabled]="historicoLoading">
+          {{ historicoLoading ? 'Buscando...' : 'Buscar' }}
+        </button>
+      </div>
+
+      @if (historicoError) { <div class="alert-error">{{ historicoError }}</div> }
+
+      @if (historicoOrdenes.length > 0) {
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr><th>#</th><th>Proveedor</th><th>Sucursal</th><th>Estado</th><th>Total</th><th>Plazo</th><th>Fecha</th><th></th></tr>
+            </thead>
+            <tbody>
+              @for (o of historicoOrdenes; track o.id) {
+                <tr>
+                  <td>{{ o.id }}</td>
+                  <td>{{ o.proveedor }}</td>
+                  <td>{{ o.sucursalNombre }}</td>
+                  <td><span class="badge" [ngClass]="getBadgeClass(o.estado)">{{ o.estado }}</span></td>
+                  <td class="total">{{ o.total | currency:'USD' }}</td>
+                  <td>{{ o.plazoPago === 0 ? 'Contado' : o.plazoPago + ' días' }}</td>
+                  <td class="date-col">{{ o.createdAt | date:'dd/MM/yy' }}</td>
+                  <td><button class="btn-sm btn-info" (click)="verDetalle(o)">Ver</button></td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      } @else if (!historicoLoading && historicoOrdenes.length === 0 && !historicoError) {
+        <p class="empty-hint">Use los filtros de arriba para consultar el histórico.</p>
+      }
+    </div>
+  }
+</div>
+
+<!-- ============================================================ -->
+<!-- Modal: Nueva Orden                                           -->
+<!-- ============================================================ -->
+@if (mostrarFormulario) {
+  <div class="modal-overlay" (click)="mostrarFormulario = false">
+    <div class="modal modal-lg" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Nueva Orden de Compra</h3>
+        <button class="btn-close" (click)="mostrarFormulario = false">✕</button>
+      </div>
+      <form [formGroup]="form" (ngSubmit)="crear()">
+        @if (error) { <div class="alert-error">{{ error }}</div> }
+        <div class="form-row">
+          <div class="form-group">
+            <label>Sucursal *</label>
+            <select formControlName="sucursalId">
+              @for (s of sucursales; track s.id) { <option [ngValue]="s.id">{{ s.nombre }}</option> }
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Proveedor *</label>
+            <input formControlName="proveedor" placeholder="Nombre del proveedor" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Plazo de pago *</label>
+            <select formControlName="plazoPago">
+              @for (p of plazosDisponibles; track p.value) {
+                <option [ngValue]="p.value">{{ p.label }}</option>
+              }
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Observaciones</label>
+            <input formControlName="observaciones" placeholder="Observaciones opcionales" />
+          </div>
+        </div>
+        <div class="items-section">
+          <div class="items-header">
+            <strong>Productos</strong>
+            <button type="button" class="btn-sm btn-edit" (click)="agregarItem()">+ Agregar</button>
+          </div>
+          <div formArrayName="items">
+            @for (item of itemsArray.controls; track item; let i = $index) {
+              <div [formGroupName]="i" class="item-row">
+                <div class="form-group flex-grow">
+                  <select formControlName="productoId" (change)="onProductoChange(i, item.get('productoId')?.value)">
+                    <option [ngValue]="null">Producto...</option>
+                    @for (p of productos; track p.id) { <option [ngValue]="p.id">{{ p.sku }} — {{ p.nombre }}</option> }
+                  </select>
+                </div>
+                <div class="form-group qty-group">
+                  <input type="number" formControlName="cantidad" min="1" placeholder="Cant." />
+                </div>
+                <div class="form-group qty-group" style="position:relative">
+                  <input type="number" formControlName="precioUnitario" min="0" step="0.01" placeholder="Precio costo" />
+                </div>
+                <button type="button" class="btn-sm btn-danger" (click)="quitarItem(i)">✕</button>
+              </div>
+            }
+          </div>
+          <div class="total-row"><strong>Total estimado: {{ calcularTotal() | currency:'USD' }}</strong></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" (click)="mostrarFormulario = false">Cancelar</button>
+          <button type="submit" class="btn-primary" [disabled]="form.invalid || loading">{{ loading ? 'Creando...' : 'Crear Orden' }}</button>
+        </div>
+      </form>
+    </div>
+  </div>
+}
+
+<!-- ============================================================ -->
+<!-- Modal: Detalle de Orden                                      -->
+<!-- ============================================================ -->
+@if (detalleOrden) {
+  <div class="modal-overlay" (click)="detalleOrden = null">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Orden #{{ detalleOrden.id }}</h3>
+        <button class="btn-close" (click)="detalleOrden = null">✕</button>
+      </div>
+      <div class="detalle-body">
+        <p><strong>Proveedor:</strong> {{ detalleOrden.proveedor }}</p>
+        <p><strong>Estado:</strong> <span class="badge" [ngClass]="getBadgeClass(detalleOrden.estado)">{{ detalleOrden.estado }}</span></p>
+        <p><strong>Sucursal:</strong> {{ detalleOrden.sucursalNombre }}</p>
+        <p><strong>Creado por:</strong> {{ detalleOrden.creadoPorNombre }}</p>
+        @if (detalleOrden.aprobadoPorNombre) { <p><strong>Aprobado por:</strong> {{ detalleOrden.aprobadoPorNombre }}</p> }
+        <p>
+          <strong>Plazo de pago:</strong>
+          {{ detalleOrden.plazoPago === 0 ? 'Contado' : detalleOrden.plazoPago + ' días' }}
+        </p>
+        @if (detalleOrden.plazoPago > 0 && detalleOrden.fechaVencimientoPago) {
+          <p><strong>Fecha de vencimiento pago:</strong> {{ detalleOrden.fechaVencimientoPago | date:'dd/MM/yyyy' }}</p>
+        }
+        @if (detalleOrden.observaciones) {
+          <p><strong>Observaciones:</strong> {{ detalleOrden.observaciones }}</p>
+        }
+        <table class="detalle-table">
+          <thead><tr><th>Producto</th><th>Cant.</th><th>Precio Unit.</th><th>Subtotal</th></tr></thead>
+          <tbody>
+            @for (i of detalleOrden.items; track i.productoId) {
+              <tr>
+                <td>{{ i.productoNombre }}</td>
+                <td>{{ i.cantidad }}</td>
+                <td>{{ i.precioUnitario | currency:'USD' }}</td>
+                <td>{{ i.cantidad * i.precioUnitario | currency:'USD' }}</td>
+              </tr>
+            }
+          </tbody>
+          <tfoot><tr><td colspan="3"><strong>Total</strong></td><td><strong>{{ detalleOrden.total | currency:'USD' }}</strong></td></tr></tfoot>
+        </table>
+      </div>
+    </div>
+  </div>
+}

@@ -1,0 +1,100 @@
+@use '../../../styles/shared' as *;
+
+.header-actions { display: flex; gap: 12px; align-items: center; }
+.item-filter { font-size: 0.82rem; }
+.sucursal-select { padding: 8px 12px; border: 2px solid $border; border-radius: 6px; font-size: 0.9rem; outline: none; &:focus { border-color: $primary; } }
+.total { font-weight: 700; color: $primary; }
+.date-col { font-size: 0.82rem; color: #777; }
+
+.modal-lg { max-width: 720px; }
+
+.items-section {
+  background: #f9f9f9;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.items-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.item-row-header {
+  display: grid;
+  grid-template-columns: 1fr 70px 140px 100px 32px;
+  gap: 12px;
+  align-items: center;
+  padding: 0 0 8px;
+  border-bottom: 2px solid #e2e8f0;
+  margin-bottom: 12px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+
+  .price-display, .subtotal { text-align: right; }
+  .qty-group { text-align: center; }
+}
+
+.item-row {
+  display: grid;
+  grid-template-columns: 1fr 70px 140px 100px 32px;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 16px;
+
+  .form-group { margin-bottom: 0; }
+  .qty-group input { text-align: center; padding: 6px 4px; }
+  .subtotal { text-align: right; font-weight: 700; color: #0f172a; font-size: 1.05rem; }
+
+  .price-display {
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 4px;
+
+    .precio-resuelto { font-weight: 700; color: #334155; font-size: 1rem; }
+  }
+}
+
+.badge-mayorista {
+  background: #f59e0b;
+  color: #fff;
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.total-row {
+  text-align: right;
+  font-size: 1.1rem;
+  padding-top: 8px;
+  border-top: 1px solid $border;
+  color: $primary;
+}
+
+.detalle-body {
+  padding: 20px 24px;
+  p { margin-bottom: 8px; }
+}
+
+.detalle-table {
+  width: 100%;
+  margin: 16px auto 0;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+
+  th, td { padding: 8px 12px; border-bottom: 1px solid $border; text-align: center; }
+  thead { background: transparent; }
+  th { background: #1e293b; color: #f8fafc; font-size: 0.8rem; text-transform: uppercase; }
+  tfoot td { border-top: 2px solid $border; border-bottom: none; }
+}

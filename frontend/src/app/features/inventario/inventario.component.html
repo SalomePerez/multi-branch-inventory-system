@@ -1,0 +1,178 @@
+<div class="page">
+  <div class="page-header">
+    <div class="title-section">
+      <h2>Inventario</h2>
+      <p class="subtitle">Stock actual por sucursal con trazabilidad de movimientos</p>
+    </div>
+    <div class="header-actions">
+      <div class="search-container">
+        <lucide-icon name="search" [size]="16"></lucide-icon>
+        <input type="text" [(ngModel)]="searchTerm" placeholder="Buscar por SKU o Nombre..." />
+      </div>
+      @if (filtroCritico) {
+        <span class="badge badge-danger item-filter">Filtrado: Stock Crítico</span>
+        <button class="btn-sm btn-secondary" (click)="filtroCritico = false; cargarInventario()">Quitar filtro</button>
+      }
+      @if (verTodo) {
+        <span class="badge badge-info item-filter">Todas las sucursales</span>
+        <button class="btn-sm btn-secondary" (click)="toggleVerTodo()">Ver mi sucursal</button>
+      } @else {
+        <div class="select-wrapper">
+          <lucide-icon name="building-2" [size]="14"></lucide-icon>
+          <select (change)="cambiarSucursal($event)">
+            @for (s of sucursales; track s.id) {
+              <option [value]="s.id" [selected]="s.id === sucursalSeleccionada">{{ s.nombre }}</option>
+            }
+          </select>
+        </div>
+        @if (isGerenteOrAdmin) {
+          <button class="btn-sm btn-secondary" (click)="toggleVerTodo()">Ver todas</button>
+        }
+      }
+      <button class="btn-primary" (click)="abrirAjuste()">
+        <lucide-icon name="plus" [size]="18"></lucide-icon>
+        Ajustar Stock
+      </button>
+    </div>
+  </div>
+
+  @if (success) { <div class="alert-success">{{ success }}</div> }
+  @if (error)   { <div class="alert-error">{{ error }}</div> }
+
+  @if (loading && inventario.length === 0) {
+    <p class="loading">Cargando inventario...</p>
+  } @else {
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>SKU</th>
+            <th>Producto</th>
+            <th>Categoría</th>
+            <th>Cantidad</th>
+            <th>Stock Mín.</th>
+            <th>Estado</th>
+            <th>Actualizado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of filteredInventario; track item.id) {
+            <tr [class.row-alert]="item.bajoCritico">
+              <td><code>{{ item.productoSku }}</code></td>
+              <td>{{ item.productoNombre }}</td>
+              <td><span class="badge">{{ item.categoriaNombre }}</span></td>
+              <td class="qty" [class.qty-low]="item.bajoCritico">
+                {{ item.cantidad }} <span class="unit">{{ item.unidadMedidaAbreviatura || 'und' }}</span>
+              </td>
+              <td>{{ item.stockMinimo }}</td>
+              <td>
+                @if (item.bajoCritico) {
+                  <span class="badge badge-danger">Bajo crítico</span>
+                } @else {
+                  <span class="badge badge-success">OK</span>
+                }
+              </td>
+              <td class="date-col">{{ item.updatedAt | date:'dd/MM/yy HH:mm' }}</td>
+              <td class="actions">
+                <button class="btn-sm btn-edit" (click)="abrirAjuste(item)">Ajustar</button>
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="8" class="empty">No hay stock registrado para esta sucursal</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>
+
+@if (mostrarAjuste) {
+  <div class="modal-overlay" (click)="mostrarAjuste = false">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Ajustar Inventario</h3>
+        <button class="btn-close" (click)="mostrarAjuste = false">✕</button>
+      </div>
+
+      <form [formGroup]="ajusteForm" (ngSubmit)="guardarAjuste()">
+        @if (error) { <div class="alert-error">{{ error }}</div> }
+
+        <div class="form-group">
+          <label>Producto *</label>
+          <select formControlName="productoId">
+            <option [ngValue]="null">Seleccionar producto...</option>
+            @for (p of productos; track p.id) {
+              <option [ngValue]="p.id">{{ p.sku }} — {{ p.nombre }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Sucursal *</label>
+          <select formControlName="sucursalId">
+            @for (s of sucursales; track s.id) {
+              <option [ngValue]="s.id">{{ s.nombre }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Motivo *</label>
+          <select formControlName="motivo">
+            <option value="">Seleccione un motivo...</option>
+            <optgroup label="Entradas">
+              <option value="INGRESO_MANUAL">Ingreso Manual (Compra / Donación)</option>
+              <option value="DEVOLUCION">Devolución de Cliente</option>
+            </optgroup>
+            <optgroup label="Salidas">
+              <option value="RETIRO_MANUAL">Retiro Manual (Desecho / Merma)</option>
+              <option value="VENTA">Venta (Manual)</option>
+            </optgroup>
+            <optgroup label="Correcciones">
+              <option value="CORRECCION">Corrección de Inventario</option>
+              <option value="AUDITORIA">Ajuste por Auditoría</option>
+            </optgroup>
+          </select>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>
+              {{ esDevolucion ? 'Unidades devueltas *' : 'Cantidad (nuevo total) *' }}
+            </label>
+            <input type="number" formControlName="cantidad" [min]="esDevolucion ? 1 : 0" />
+            @if (esDevolucion) {
+              <small style="color:#64748b; font-size:0.75rem">Número de unidades que el cliente regresa. Se suman al stock actual.</small>
+            }
+          </div>
+          <div class="form-group">
+            <label>Stock Mínimo</label>
+            <input type="number" formControlName="stockMinimo" min="0" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>
+            Observaciones {{ esDevolucion ? '(obligatorio) *' : '' }}
+          </label>
+          <textarea formControlName="observaciones" rows="2"
+            [placeholder]="esDevolucion
+              ? 'Ej: Venta #142, cliente Pérez — producto defectuoso.'
+              : 'Detalles adicionales...'">
+          </textarea>
+          @if (esDevolucion && ajusteForm.get('observaciones')?.invalid && ajusteForm.get('observaciones')?.touched) {
+            <small style="color:#ef4444; font-size:0.75rem">Debe indicar el origen de la devolución (venta o cliente).</small>
+          }
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" (click)="mostrarAjuste = false">Cancelar</button>
+          <button type="submit" class="btn-primary" [disabled]="ajusteForm.invalid || loading">
+            {{ loading ? 'Guardando...' : 'Guardar' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}

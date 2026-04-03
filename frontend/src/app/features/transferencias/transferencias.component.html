@@ -1,0 +1,212 @@
+<div class="page">
+  <div class="page-header">
+    <div class="title-section">
+      <h2>Transferencias</h2>
+      <p class="subtitle">Movimientos de stock entre sucursales con trazabilidad de estados</p>
+    </div>
+    <div class="header-actions">
+      @if (verTodas) {
+        <span class="badge badge-info item-filter">Mostrando todas las sucursales</span>
+        <button class="btn-sm btn-secondary" (click)="toggleVerTodas()">Ver mi sucursal</button>
+      } @else {
+        <div class="select-wrapper">
+          <lucide-icon name="building-2" [size]="14"></lucide-icon>
+          <select (change)="cambiarSucursal($event)">
+            @for (s of sucursales; track s.id) {
+              <option [value]="s.id" [selected]="s.id === sucursalSeleccionada">{{ s.nombre }}</option>
+            }
+          </select>
+        </div>
+        @if (isGerenteOrAdmin) {
+          <button class="btn-sm btn-secondary" (click)="toggleVerTodas()">Ver todas</button>
+        }
+      }
+      <button class="btn-primary" (click)="abrirFormulario()">+ Nueva Transferencia</button>
+    </div>
+  </div>
+
+  @if (success) { <div class="alert-success">{{ success }}</div> }
+  @if (error && !mostrarFormulario) { <div class="alert-error">{{ error }}</div> }
+
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr><th>#</th><th>Origen</th><th>Destino</th><th>Estado</th><th>Solicitado por</th><th>Fecha</th><th>Acciones</th></tr>
+      </thead>
+      <tbody>
+        @for (t of transferencias; track t.id) {
+          <tr>
+            <td>{{ t.id }}</td>
+            <td>{{ t.sucursalOrigenNombre }}</td>
+            <td>{{ t.sucursalDestinoNombre }}</td>
+            <td><span class="badge" [ngClass]="getBadgeClass(t.estado)">{{ t.estado }}</span></td>
+            <td>{{ t.solicitadoPorNombre }}</td>
+            <td class="date-col">{{ t.createdAt | date:'dd/MM/yy' }}</td>
+            <td class="actions">
+              <button class="btn-sm btn-info" (click)="verDetalle(t)">Ver</button>
+              @if (isGerenteOrAdmin && t.estado === 'PENDIENTE') {
+                <button class="btn-sm btn-success" (click)="aprobar(t.id)">Aprobar</button>
+                <button class="btn-sm btn-danger" (click)="abrirModalRechazo(t)">Rechazar</button>
+              }
+              @if (isGerenteOrAdmin && t.estado === 'APROBADA') {
+                <button class="btn-sm btn-danger" (click)="abrirModalRechazo(t)">Rechazar</button>
+              }
+            </td>
+          </tr>
+        } @empty {
+          <tr><td colspan="7" class="empty">No hay transferencias</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal: Nueva Transferencia -->
+@if (mostrarFormulario) {
+  <div class="modal-overlay" (click)="mostrarFormulario = false">
+    <div class="modal modal-lg" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Nueva Transferencia</h3>
+        <button class="btn-close" (click)="mostrarFormulario = false">✕</button>
+      </div>
+      <form [formGroup]="form" (ngSubmit)="solicitar()">
+        @if (error) { <div class="alert-error">{{ error }}</div> }
+        <div class="form-row">
+          <div class="form-group">
+            <label>Sucursal Origen *</label>
+            <select formControlName="sucursalOrigenId">
+              @for (s of sucursales; track s.id) { <option [ngValue]="s.id">{{ s.nombre }}</option> }
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Sucursal Destino *</label>
+            <select formControlName="sucursalDestinoId">
+              <option [ngValue]="null">Seleccionar...</option>
+              @for (s of sucursales; track s.id) { <option [ngValue]="s.id">{{ s.nombre }}</option> }
+            </select>
+          </div>
+        </div>
+        <div class="items-section">
+          <div class="items-header">
+            <strong>Productos a transferir</strong>
+            <button type="button" class="btn-sm btn-edit" (click)="agregarItem()">+ Agregar</button>
+          </div>
+          <div formArrayName="items">
+            @for (item of itemsArray.controls; track item; let i = $index) {
+              <div [formGroupName]="i" class="item-row">
+                <div class="form-group flex-grow">
+                  <select formControlName="productoId">
+                    <option [ngValue]="null">Producto...</option>
+                    @if (productosDisponiblesEnOrigen.length === 0) {
+                      <option disabled>Sin stock disponible en sucursal origen</option>
+                    }
+                    @for (item of productosDisponiblesEnOrigen; track item.producto.id) {
+                      <option [ngValue]="item.producto.id">{{ item.producto.sku }} — {{ item.producto.nombre }} (Stock: {{ item.stock }})</option>
+                    }
+                  </select>
+                </div>
+                <div class="form-group qty-group">
+                  <input type="number" formControlName="cantidadSolicitada" min="1" placeholder="Cantidad" />
+                </div>
+                <button type="button" class="btn-sm btn-danger" (click)="quitarItem(i)">✕</button>
+              </div>
+            }
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Observaciones</label>
+          <textarea formControlName="observaciones" rows="2"></textarea>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" (click)="mostrarFormulario = false">Cancelar</button>
+          <button type="submit" class="btn-primary" [disabled]="form.invalid || loading">{{ loading ? 'Enviando...' : 'Solicitar' }}</button>
+        </div>
+      </form>
+    </div>
+  </div>
+}
+
+<!-- Modal: Detalle Transferencia -->
+@if (detalleTransferencia) {
+  <div class="modal-overlay" (click)="detalleTransferencia = null">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Transferencia #{{ detalleTransferencia.id }}</h3>
+        <button class="btn-close" (click)="detalleTransferencia = null">✕</button>
+      </div>
+      <div class="detalle-body">
+        <p><strong>Origen:</strong> {{ detalleTransferencia.sucursalOrigenNombre }}</p>
+        <p><strong>Destino:</strong> {{ detalleTransferencia.sucursalDestinoNombre }}</p>
+        <p><strong>Estado:</strong> <span class="badge" [ngClass]="getBadgeClass(detalleTransferencia.estado)">{{ detalleTransferencia.estado }}</span></p>
+        <p><strong>Solicitado por:</strong> {{ detalleTransferencia.solicitadoPorNombre }}</p>
+        @if (detalleTransferencia.transportista) {
+          <p><strong>Transportista:</strong> {{ detalleTransferencia.transportista }}</p>
+        }
+        @if (detalleTransferencia.fechaEstimadaLlegada) {
+          <p><strong>Entrega estimada:</strong> {{ detalleTransferencia.fechaEstimadaLlegada | date:'dd/MM/yyyy HH:mm' }}</p>
+        }
+        @if (detalleTransferencia.fechaRealLlegada) {
+          <p><strong>Entrega real:</strong> {{ detalleTransferencia.fechaRealLlegada | date:'dd/MM/yyyy HH:mm' }}</p>
+        }
+        @if (detalleTransferencia.motivoRechazo) {
+          <p class="motivo-rechazo"><strong>Motivo de rechazo:</strong> {{ detalleTransferencia.motivoRechazo }}</p>
+        }
+        <table class="detalle-table">
+          <thead><tr><th>Producto</th><th>Solicitado</th><th>Enviado</th><th>Recibido</th></tr></thead>
+          <tbody>
+            @for (i of detalleTransferencia.items; track i.productoId) {
+              <tr>
+                <td>{{ i.productoNombre }}</td>
+                <td>{{ i.cantidadSolicitada }}</td>
+                <td>{{ i.cantidadEnviada ?? '-' }}</td>
+                <td>{{ i.cantidadRecibida ?? '-' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+        @if (errorModal) {
+          <div class="alert-error modal-error">{{ errorModal }}</div>
+        }
+        <div class="detalle-actions">
+          @if (isGerenteOrAdmin && (detalleTransferencia.estado === 'PENDIENTE' || detalleTransferencia.estado === 'APROBADA')) {
+            @if (detalleTransferencia.estado === 'PENDIENTE') {
+              <button class="btn-success btn-primary" (click)="aprobar(detalleTransferencia.id); detalleTransferencia = null" style="margin-right: 8px;">Aprobar</button>
+            }
+            <button class="btn-danger btn-primary" (click)="abrirModalRechazo(detalleTransferencia); detalleTransferencia = null">Rechazar</button>
+          }
+          @if (detalleTransferencia.estado === 'APROBADA') {
+            <button class="btn-primary" (click)="enviar(detalleTransferencia)">Enviar (descontar origen)</button>
+          }
+          @if (detalleTransferencia.estado === 'EN_TRANSITO') {
+            <button class="btn-primary" (click)="recibir(detalleTransferencia)">Confirmar Recepción</button>
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Modal: Rechazar con justificación -->
+@if (mostrarModalRechazo) {
+  <div class="modal-overlay" (click)="mostrarModalRechazo = false">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Rechazar Transferencia #{{ transferenciaArechazar?.id }}</h3>
+        <button class="btn-close" (click)="mostrarModalRechazo = false">✕</button>
+      </div>
+      <div style="padding: 20px 24px;">
+        <div class="form-group">
+          <label>Motivo del rechazo *</label>
+          <textarea [(ngModel)]="motivoRechazo" rows="3" placeholder="Indique el motivo por el cual se rechaza la transferencia..."></textarea>
+        </div>
+        @if (errorModal) {
+          <div class="alert-error">{{ errorModal }}</div>
+        }
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" (click)="mostrarModalRechazo = false">Cancelar</button>
+        <button class="btn-danger btn-primary" (click)="confirmarRechazo()" [disabled]="!motivoRechazo.trim()">Confirmar Rechazo</button>
+      </div>
+    </div>
+  </div>
+}

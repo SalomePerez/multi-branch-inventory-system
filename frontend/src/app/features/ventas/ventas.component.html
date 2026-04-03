@@ -1,0 +1,225 @@
+<div class="page">
+  <div class="page-header">
+    <div class="title-section">
+      <h2>Ventas</h2>
+      <p class="subtitle">Registro de ventas minoristas con descuento automático de stock</p>
+    </div>
+    <div class="header-actions">
+      @if (verTodas) {
+        <span class="badge badge-info item-filter">Todas las sucursales</span>
+        <button class="btn-sm btn-secondary" (click)="toggleVerTodas()">Ver mi sucursal</button>
+      } @else {
+        <div class="select-wrapper">
+          <lucide-icon name="building-2" [size]="14"></lucide-icon>
+          <select (change)="cambiarSucursal($event)">
+            @for (s of sucursales; track s.id) {
+              <option [value]="s.id" [selected]="s.id === sucursalSeleccionada">{{ s.nombre }}</option>
+            }
+          </select>
+        </div>
+        @if (isGerenteOrAdmin) {
+          <button class="btn-sm btn-secondary" (click)="toggleVerTodas()">Ver todas</button>
+        }
+      }
+      <button class="btn-primary" (click)="abrirFormulario()">+ Nueva Venta</button>
+    </div>
+  </div>
+
+  @if (success) { <div class="alert-success">{{ success }}</div> }
+  @if (error && !mostrarFormulario) { <div class="alert-error">{{ error }}</div> }
+
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Sucursal</th>
+          <th>Vendedor</th>
+          <th>Items</th>
+          <th>Total</th>
+          <th>Fecha</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (v of ventas; track v.id) {
+          <tr>
+            <td>{{ v.id }}</td>
+            <td>{{ v.sucursalNombre }}</td>
+            <td>{{ v.vendedorNombre }}</td>
+            <td>{{ v.items.length }}</td>
+            <td class="total">{{ v.total | currency:'USD' }}</td>
+            <td class="date-col">{{ v.createdAt | date:'dd/MM/yy HH:mm' }}</td>
+            <td class="actions">
+              <button class="btn-sm btn-info" (click)="verDetalle(v)">Ver</button>
+            </td>
+          </tr>
+        } @empty {
+          <tr><td colspan="7" class="empty">No hay ventas registradas</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Formulario Nueva Venta -->
+@if (mostrarFormulario) {
+  <div class="modal-overlay" (click)="mostrarFormulario = false">
+    <div class="modal modal-lg" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Nueva Venta</h3>
+        <button class="btn-close" (click)="mostrarFormulario = false">✕</button>
+      </div>
+
+      <form [formGroup]="form" (ngSubmit)="registrar()">
+        @if (error) { <div class="alert-error">{{ error }}</div> }
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Sucursal *</label>
+            <select formControlName="sucursalId">
+              @for (s of sucursales; track s.id) {
+                <option [ngValue]="s.id">{{ s.nombre }}</option>
+              }
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Promoción / Descuento</label>
+            <select formControlName="listaPrecioId">
+              <option [ngValue]="null">Ninguno / General</option>
+              @for (d of descuentos; track d.id) {
+                <option [ngValue]="d.id">{{ d.nombre }} ({{d.porcentaje}}%)</option>
+              }
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Observaciones</label>
+            <input formControlName="observaciones" />
+          </div>
+        </div>
+
+        <div class="items-section">
+          <div class="items-header">
+            <strong>Productos</strong>
+            <button type="button" class="btn-sm btn-edit" (click)="agregarItem()">+ Agregar</button>
+          </div>
+
+          <!-- Encabezados de columna -->
+          <div class="item-row item-row-header">
+            <div class="flex-grow">Producto</div>
+            <div class="qty-group">Cant.</div>
+            <div class="price-display">Precio U.</div>
+            <div class="subtotal">Subtotal</div>
+            <div style="width:32px"></div>
+          </div>
+
+          <div formArrayName="items">
+            @for (item of itemsArray.controls; track item; let i = $index) {
+              <div [formGroupName]="i" class="item-row">
+                <div class="form-group flex-grow">
+                  <select formControlName="productoId">
+                    <option [ngValue]="null">Seleccionar producto...</option>
+                    @for (p of productos; track p.id) {
+                      <option [ngValue]="p.id">
+                        {{ p.sku }} — {{ p.nombre }}
+                        (Stock: {{ getStockDisponible(p.id) }})
+                      </option>
+                    }
+                  </select>
+                </div>
+                <div class="form-group qty-group">
+                  <input type="number" formControlName="cantidad" min="1" placeholder="Cant." />
+                  @if (item.value.productoId && item.value.cantidad > getStockDisponible(item.value.productoId)) {
+                    <small class="text-danger">Stock insuf.</small>
+                  }
+                </div>
+                <!-- Precio unitario resuelto + ahorro vs precio base -->
+                <div class="price-display" style="display:flex; flex-direction:column; align-items:flex-end; padding-top:4px;">
+                  <span class="precio-resuelto">{{ getPrecio(item.value.productoId, item.value.cantidad) | currency:'USD' }}</span>
+                  <div style="min-height: 20px; text-align: right;">
+                    @if (item.value.productoId && item.value.cantidad) {
+                      @if (esDescuentoPorcentajeAplicado(item.value.productoId, item.value.cantidad)) {
+                        <small class="badge" style="background:#16a34a; color:white; font-size:0.65rem; padding:2px 6px;">
+                          ¡{{ descuentoSeleccionado?.porcentaje }}% OFF!
+                        </small>
+                      } @else if (faltanUnidadesParaDescuento(item.value.productoId, item.value.cantidad)) {
+                        <small style="color:#eab308; font-size: 0.65rem; line-height:1">
+                          + {{ faltanUnidadesParaDescuento(item.value.productoId, item.value.cantidad) }} unid. promo
+                        </small>
+                      }
+                    }
+                  </div>
+                </div>
+                <div class="subtotal">
+                  {{ calcularSubtotal(item) | currency:'USD' }}
+                </div>
+                <button type="button" class="btn-sm btn-danger" style="padding: 4px; border-radius: 4px;" (click)="quitarItem(i)">✕</button>
+              </div>
+            }
+          </div>
+
+          <div class="total-row" style="display:flex; flex-direction:column; align-items:flex-end; margin-top:16px;">
+            <div class="form-group" style="display:flex; align-items:center; gap:8px; margin-bottom:12px">
+              <label style="margin:0; font-size: 0.85rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Desc. Global:</label>
+              <div style="position:relative">
+                <span style="position:absolute; left:8px; top:50%; transform:translateY(-50%); color:#64748b">$</span>
+                <input type="number" formControlName="descuentoGlobal" min="0" style="width:100px; padding: 6px 8px 6px 20px; border:1px solid #cbd5e1; border-radius:6px;" />
+              </div>
+            </div>
+            <strong style="font-size: 1.4rem; color: #0f172a;">Total: <span style="color:#16a34a">{{ totalVenta$ | async | currency:'USD' }}</span></strong>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" (click)="mostrarFormulario = false">Cancelar</button>
+          <button type="submit" class="btn-primary" [disabled]="form.invalid || loading">
+            {{ loading ? 'Registrando...' : 'Registrar Venta' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}
+
+<!-- Detalle Venta -->
+@if (ventaDetalle) {
+  <div class="modal-overlay" (click)="ventaDetalle = null">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Venta #{{ ventaDetalle.id }}</h3>
+        <button class="btn-close" (click)="ventaDetalle = null">✕</button>
+      </div>
+      <div class="detalle-body">
+        <p><strong>Sucursal:</strong> {{ ventaDetalle.sucursalNombre }}</p>
+        <p><strong>Vendedor:</strong> {{ ventaDetalle.vendedorNombre }}</p>
+        @if (ventaDetalle.listaPrecioNombre) {
+          <p><strong>Descuento Aplicado:</strong> <span class="badge badge-info">{{ ventaDetalle.listaPrecioNombre }}</span></p>
+        }
+        <p><strong>Fecha:</strong> {{ ventaDetalle.createdAt | date:'dd/MM/yyyy HH:mm' }}</p>
+        @if (ventaDetalle.observaciones) { <p><strong>Obs:</strong> {{ ventaDetalle.observaciones }}</p> }
+        <table class="detalle-table">
+          <thead><tr><th>Producto</th><th>Cant.</th><th>Precio U.</th><th>Descuento</th><th>Subtotal</th></tr></thead>
+          <tbody>
+            @for (i of ventaDetalle.items; track i.productoId) {
+              <tr>
+                <td>{{ i.productoNombre }}</td>
+                <td>{{ i.cantidad }}</td>
+                <td>{{ i.precioUnitario | currency:'USD' }}</td>
+                <td>{{ i.descuentoAplicado ? (i.descuentoAplicado | currency:'USD') : '$0.00' }}</td>
+                <td>{{ i.subtotal | currency:'USD' }}</td>
+              </tr>
+            }
+          </tbody>
+          <tfoot>
+            @if (ventaDetalle.descuentoTotal && ventaDetalle.descuentoTotal > 0) {
+              <!-- Bruto = total + todos los descuentos (ítems + global); permite auditar el valor original -->
+              <tr><td colspan="4" style="text-align:right"><strong>Bruto sin descuentos</strong></td><td><strong>{{ (ventaDetalle.total + ventaDetalle.descuentoTotal) | currency:'USD' }}</strong></td></tr>
+              <tr><td colspan="4" style="text-align:right; color:#ef4444"><strong>Descuentos totales</strong></td><td style="color:#ef4444"><strong>-{{ ventaDetalle.descuentoTotal | currency:'USD' }}</strong></td></tr>
+            }
+            <tr><td colspan="4" style="text-align:right"><strong>Total Final</strong></td><td><strong>{{ ventaDetalle.total | currency:'USD' }}</strong></td></tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  </div>
+}

@@ -1,0 +1,18 @@
+@use '../../../styles/shared' as *;
+.header-actions { display: flex; gap: 12px; align-items: center; }
+.item-filter { font-size: 0.82rem; }
+.motivo-rechazo { background: #ffebee; color: #c62828; padding: 8px 12px; border-radius: 6px; border-left: 3px solid $danger; font-size: 0.88rem; }
+.sucursal-select { padding: 8px 12px; border: 2px solid $border; border-radius: 6px; font-size: 0.9rem; outline: none; }
+.date-col { font-size: 0.82rem; color: #777; }
+.modal-lg { max-width: 680px; }
+.items-section { background: #f9f9f9; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+.items-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.item-row { display: flex; gap: 10px; align-items: flex-end; margin-bottom: 10px; .flex-grow { flex: 1; margin-bottom: 0; } .qty-group { width: 110px; margin-bottom: 0; } }
+.detalle-body { padding: 20px 24px; p { margin-bottom: 8px; } }
+.detalle-table { 
+  width: 100%; margin-top: 16px; border-collapse: collapse; font-size: 0.9rem; 
+  th, td { padding: 12px; border-bottom: 1px solid #eee; text-align: left; } 
+  th { background: #334155; color: white; font-weight: 600; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.05em; } 
+  thead { background: #334155; }
+}
+.detalle-actions { margin-top: 16px; display: flex; gap: 12px; justify-content: flex-end; }

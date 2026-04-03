@@ -1,0 +1,187 @@
+<div class="dashboard-container">
+  <!-- Header -->
+  <header class="dashboard-header">
+    <div class="welcome-section">
+      <h1>Panel de Control</h1>
+      <p class="subtitle">Gestión centralizada de la red de sucursales</p>
+    </div>
+    <div class="user-greeting">
+      <span class="avatar"><lucide-icon name="user" [size]="20"></lucide-icon></span>
+      <div class="greeting-text">
+        <span class="welcome">Bienvenido,</span>
+        <strong>{{ usuario?.nombre }}</strong>
+      </div>
+    </div>
+  </header>
+
+  <!-- Stats Grid -->
+  <div class="stats-grid">
+    <div class="stat-card accent" routerLink="/productos">
+      <div class="stat-icon"><lucide-icon name="package"></lucide-icon></div>
+      <div>
+        <div class="stat-label">Total Productos</div>
+        <div class="stat-value">{{ totalProductos }}</div>
+      </div>
+    </div>
+    <div class="stat-card danger" [class.active]="stockBajoCount > 0" (click)="verStockCritico()" style="cursor: pointer;">
+      <div class="stat-icon"><lucide-icon name="alert-triangle"></lucide-icon></div>
+      <div>
+        <div class="stat-label">Stock Crítico</div>
+        <div class="stat-value">{{ stockBajoCount }}</div>
+      </div>
+    </div>
+    <div class="stat-card warning" [class.active]="totalAlertas > 0" (click)="verAlertas()" style="cursor:pointer">
+      <div class="stat-icon"><lucide-icon name="bell"></lucide-icon></div>
+      <div>
+        <div class="stat-label">Alertas Pendientes</div>
+        <div class="stat-value">{{ totalAlertas }}</div>
+      </div>
+    </div>
+    <div class="stat-card purple">
+      <div class="stat-icon"><lucide-icon name="arrow-left-right"></lucide-icon></div>
+      <div>
+        <div class="stat-label">Transf. Activas</div>
+        <div class="stat-value">{{ transferenciasActivas }}</div>
+      </div>
+    </div>
+    <div class="stat-card info" (click)="verSucursales()" style="cursor:pointer">
+      <div class="stat-icon"><lucide-icon name="building-2"></lucide-icon></div>
+      <div>
+        <div class="stat-label">Sucursales</div>
+        <div class="stat-value">{{ sucursales.length }}</div>
+      </div>
+    </div>
+  </div>  <!-- Analytics Sections -->
+  <div class="main-grid analytics-focus">
+    
+    <!-- Evolución de Ventas (Strict Req: Mes en curso vs anteriores) -->
+    <div class="card chart-card full-width">
+      <div class="card-header">
+        <div class="header-title">
+          <h3>Evolución Trimestral de Ventas</h3>
+          <p class="card-subtitle">Volumen de ventas mensual consolidado</p>
+        </div>
+        @if (comparativaMensual) {
+          <div class="monthly-delta" [class.positive]="comparativaMensual.diferencia > 0">
+            <span class="value">{{ comparativaMensual.total | currency:'USD' }}</span>
+            <span class="percentage">
+              <lucide-icon [name]="comparativaMensual.diferencia > 0 ? 'trending-up' : 'trending-down'" [size]="14"></lucide-icon>
+              {{ comparativaMensual.diferencia | number:'1.1-1' }}% vs mes anterior
+            </span>
+          </div>
+        }
+      </div>
+      <div class="chart-area visualization">
+        <!-- Dashboard Chart Visualization -->
+        <div class="chart-bars">
+          @for (m of ventasMensuales; track m.mes) {
+            <div class="bar-group">
+              <div class="bar" [style.height.%]="(m.valor / 8000) * 100">
+                <span class="tooltip">{{ m.valor | currency:'USD' }}</span>
+              </div>
+              <span class="label">{{ m.mes }}</span>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+
+    <!-- Rotación y Comportamiento de Demanda (Strict Req) -->
+    <div class="card analytics-card">
+      <div class="card-header">
+        <h3>Alta y Baja Demanda</h3>
+        <p class="card-subtitle">Rotación de productos por volumen de salida</p>
+      </div>
+      <div class="demand-list">
+        @for (p of demandaData; track p.nombre; let i = $index) {
+          <div class="demand-item">
+            <div class="rank">{{ i + 1 }}</div>
+            <div class="info">
+              <strong>{{ p.nombre }}</strong>
+              <small>{{ p.cantidad }} unidades este mes</small>
+            </div>
+            <div class="indicator" [class.high]="i < 2" [class.low]="i >= 3">
+              {{ i < 2 ? 'Alta Demanda' : (i >= 3 ? 'Baja Rotación' : 'Estable') }}
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- Impacto en Inventario / Transferencias (Strict Req) -->
+    <div class="card analytics-card">
+      <div class="card-header">
+        <h3>Transferencias en Curso</h3>
+        <p class="card-subtitle">Impacto inmediato en stock de la red</p>
+      </div>
+      <div class="transfer-impact">
+        <div class="impact-stat">
+          <div class="val">{{ transferenciasActivas }}</div>
+          <div class="lbl">Movimientos activos</div>
+        </div>
+        <div class="impact-description">
+          <lucide-icon name="info" [size]="16"></lucide-icon>
+          <p>Hay <strong>{{ transferenciasActivas }}</strong> envíos descontados en origen y pendientes de acreditar en destino.</p>
+        </div>
+        <div class="alerts-section">
+          <h4>Alertas de Reabastecimiento</h4>
+          @for (a of stockBajoItems.slice(0, 3); track a.id) {
+            <div class="mini-alert">
+              <lucide-icon name="shopping-cart" [size]="14"></lucide-icon>
+              <span>{{ a.productoNombre }}: Stock {{ a.cantidad }} / {{ a.stockMinimo }} (Mín)</span>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+
+    <!-- Comparativa Sucursales (Solo Admin) -->
+    @if (usuario?.rol === 'ADMINISTRADOR') {
+      <div class="card ranking-card full-width">
+        <div class="card-header">
+          <h3>Rendimiento Comparativo entre Sedes</h3>
+          <p class="card-subtitle">Volumen de ventas acumulado por sucursal</p>
+        </div>
+        <div class="ranking-grid">
+          @for (s of topSucursales; track s.nombre) {
+            <div class="ranking-item">
+              <div class="s-info">
+                <strong>{{ s.nombre }}</strong>
+                <span>{{ s.ventas | currency:'USD' }}</span>
+              </div>
+              <div class="progress-bar">
+                <div class="progress" [style.width.%]="(s.ventas / (topSucursales[0]?.ventas || 1)) * 100"></div>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    }
+  </div>
+
+  <!-- Modal Listado de Alertas -->
+  @if (mostrarAlertas) {
+    <div class="modal-overlay" style="position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; display:flex; justify-content:center; align-items:center;">
+      <div class="modal-content" style="background:white; padding:24px; border-radius:12px; width:500px; max-width:90%;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+          <h3 style="margin:0;">Alertas Pendientes</h3>
+          <button style="background:none; border:none; cursor:pointer; font-size:1.2rem;" (click)="mostrarAlertas = false">✕</button>
+        </div>
+        <div style="max-height: 400px; overflow-y:auto;">
+          @for (a of alertas; track a.id) {
+            <div style="padding:12px; margin-bottom:8px; border-radius:8px; background:#f8fafc; border-left:4px solid #f59e0b; display:flex; justify-content:space-between; align-items:center;">
+              <div style="display:flex; flex-direction:column; gap:4px; max-width:80%;">
+                <strong style="font-size:0.85rem; color:#64748b;">{{ a.tipo }}</strong>
+                <span style="font-size:0.95rem;">{{ a.mensaje }}</span>
+              </div>
+              <button style="padding:6px 12px; background:#3b82f6; color:white; border:none; border-radius:4px; cursor:pointer; font-size:0.8rem;" (click)="marcarAlertaLeida(a.id)">Marcar Leída</button>
+            </div>
+          }
+          @if (alertas.length === 0) {
+            <p style="text-align:center; color:#64748b;">No hay alertas en este momento.</p>
+          }
+        </div>
+      </div>
+    </div>
+  }
+</div>

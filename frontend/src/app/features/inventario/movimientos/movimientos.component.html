@@ -8,37 +8,49 @@
 
   <!-- Filtros -->
   <div class="filters-bar">
-    @if (!verTodas) {
-      <div class="select-wrapper">
-        <lucide-icon name="building-2" [size]="14"></lucide-icon>
-        <select [(ngModel)]="sucursalId" (change)="consultar()">
-          @for (s of sucursales; track s.id) {
-            <option [ngValue]="s.id">{{ s.nombre }}</option>
-          }
-        </select>
-      </div>
-    } @else {
-      <span class="badge badge-info">Todas las sucursales</span>
-    }
-    <input type="date" [(ngModel)]="desde" />
-    <input type="date" [(ngModel)]="hasta" />
-    <button class="btn-primary" (click)="consultar()">
-      <lucide-icon name="search" [size]="16"></lucide-icon> Consultar
-    </button>
-    @if (isGerenteOrAdmin) {
-      <button class="btn-sm btn-secondary" (click)="toggleVerTodas()">
-        <lucide-icon name="building-2" [size]="14"></lucide-icon>
-        {{ verTodas ? 'Por sucursal' : 'Todas las sucursales' }}
-      </button>
-    }
+    <div style="display: flex; gap: 12px; flex: 1;">
+      @if (!verTodas) {
+        <div class="select-wrapper">
+          <lucide-icon name="building-2" [size]="14"></lucide-icon>
+          <select [(ngModel)]="sucursalId" (change)="consultar()">
+            @for (s of sucursales; track s.id) {
+              <option [ngValue]="s.id">{{ s.nombre }}</option>
+            }
+          </select>
+        </div>
+      } @else {
+        <span class="badge badge-info">Todas las sucursales</span>
+      }
+      <input type="date" [(ngModel)]="desde" (change)="consultar()" />
+      <input type="date" [(ngModel)]="hasta" (change)="consultar()" />
+      
+      @if (isGerenteOrAdmin) {
+        <button class="btn-sm btn-secondary" (click)="toggleVerTodas()">
+          <lucide-icon name="building-2" [size]="14"></lucide-icon>
+          {{ verTodas ? 'Por sucursal' : 'Todas las sucursales' }}
+        </button>
+      }
+    </div>
+  </div>
+
+  <!-- Segmentación por Categoría -->
+  <div class="category-pills">
+    <button [class.active]="filtroCategoria === 'TODOS'" (click)="filtroCategoria = 'TODOS'">Todos</button>
+    <button [class.active]="filtroCategoria === 'VENTAS'" (click)="filtroCategoria = 'VENTAS'">Ventas</button>
+    <button [class.active]="filtroCategoria === 'COMPRAS'" (click)="filtroCategoria = 'COMPRAS'">Compras</button>
+    <button [class.active]="filtroCategoria === 'TRANSFERENCIAS'" (click)="filtroCategoria = 'TRANSFERENCIAS'">Transferencias</button>
+    <button [class.active]="filtroCategoria === 'DEVOLUCIONES'" (click)="filtroCategoria = 'DEVOLUCIONES'">Devoluciones</button>
+    <button [class.active]="filtroCategoria === 'AJUSTES'" (click)="filtroCategoria = 'AJUSTES'">Ajustes</button>
+    <button [class.active]="filtroCategoria === 'CATALOGO'" (click)="filtroCategoria = 'CATALOGO'">Catálogo</button>
+    <button [class.active]="filtroCategoria === 'ACCESOS'" (click)="filtroCategoria = 'ACCESOS'">Accesos</button>
   </div>
 
   @if (error) { <div class="alert-error">{{ error }}</div> }
 
   <div class="card">
     <div class="card-header">
-      <h3>Auditoría de Stock</h3>
-      <span class="badge badge-default">{{ movimientos.length }} registros</span>
+      <h3>Bitácora de Auditoría</h3>
+      <span class="badge badge-default">{{ movimientosFiltrados.length }} registros</span>
     </div>
 
     @if (loading) {
@@ -48,44 +60,60 @@
         <table>
           <thead>
             <tr>
-              <th>Fecha</th>
-              <th>Usuario</th>
-              <th>Producto</th>
-              <th>Tipo</th>
+              <th>Fecha y Hora</th>
+              <th>Usuario Responsable</th>
+              <th>Producto / Entidad</th>
+              <th>Acción Realizada</th>
               <th>Antes</th>
-              <th>Cant.</th>
+              <th>Delta</th>
               <th>Después</th>
-              <th>Referencia</th>
-              <th>Observaciones</th>
+              <th>Referencia / Motivo</th>
             </tr>
           </thead>
           <tbody>
-            @for (m of movimientos; track m.id) {
-              <tr>
-                <td class="date-col">{{ m.createdAt | date:'dd/MM/yyyy HH:mm' }}</td>
-                <td><strong>{{ m.usuarioNombre ?? '—' }}</strong></td>
-                <td>{{ m.productoNombre }}</td>
+            @for (m of movimientosFiltrados; track m.id) {
+              <tr [class.row-audit]="esEventoGlobal(m)">
+                <td class="date-col">{{ m.createdAt | date:'dd/MM/yyyy HH:mm:ss' }}</td>
+                <td>
+                  <div class="user-cell">
+                    <lucide-icon name="user" [size]="12"></lucide-icon>
+                    <strong>{{ m.usuarioNombre ?? 'Sistema' }}</strong>
+                  </div>
+                </td>
+                <td>
+                  @if (m.productoNombre) {
+                    {{ m.productoNombre }}
+                    <div class="sku">{{ m.productoSku }}</div>
+                  } @else {
+                    <span class="text-muted">—</span>
+                  }
+                </td>
                 <td>
                   <span class="status-badge" [ngClass]="getTipoClass(m.tipo)">
-                    {{ m.tipo }}
+                    {{ getTipoLabel(m.tipo) }}
                   </span>
                 </td>
-                <td>{{ m.cantidadAntes }}</td>
-                <td>
-                  <span [class.text-danger]="esSalida(m.tipo)" [class.text-success]="!esSalida(m.tipo)">
-                    {{ esSalida(m.tipo) ? '-' : '+' }}{{ m.cantidad }}
-                  </span>
-                </td>
-                <td>{{ m.cantidadDespues }}</td>
-                <td>
-                  @if (m.referenciaTipo) {
-                    <small>{{ m.referenciaTipo }} #{{ m.referenciaId }}</small>
+                <td class="text-center">{{ esEventoGlobal(m) ? '—' : m.cantidadAntes }}</td>
+                <td class="text-center">
+                  @if (!esEventoGlobal(m)) {
+                    <span [class.text-danger]="esSalida(m.tipo)" [class.text-success]="!esSalida(m.tipo)">
+                      {{ esSalida(m.tipo) ? '▼' : '▲' }}{{ m.cantidad }}
+                    </span>
                   } @else { — }
                 </td>
-                <td class="reason-col">{{ m.observaciones ?? '—' }}</td>
+                <td class="text-center">{{ esEventoGlobal(m) ? '—' : m.cantidadDespues }}</td>
+                <td>
+                  <div class="audit-details">
+                    <div class="motivo-text"><strong>{{ m.motivo }}</strong></div>
+                    <div class="obs-text small">{{ m.observaciones ?? '—' }}</div>
+                    @if (m.referenciaTipo) {
+                      <div class="ref-tag">{{ m.referenciaTipo }} #{{ m.referenciaId }}</div>
+                    }
+                  </div>
+                </td>
               </tr>
             } @empty {
-              <tr><td colspan="9" class="empty">No hay movimientos en el período seleccionado</td></tr>
+              <tr><td colspan="9" class="empty">No hay registros de auditoría en el período</td></tr>
             }
           </tbody>
         </table>

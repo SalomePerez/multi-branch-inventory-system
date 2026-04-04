@@ -283,11 +283,13 @@ public class ReporteService {
         return new MovimientoResponse(
                 m.getId(),
                 m.getTipo().name(),
-                m.getProducto().getId(), m.getProducto().getNombre(),
-                m.getSucursal().getId(), m.getSucursal().getNombre(),
+                m.getProducto() != null ? m.getProducto().getId() : null,
+                m.getProducto() != null ? m.getProducto().getNombre() : null,
+                m.getSucursal() != null ? m.getSucursal().getId() : null,
+                m.getSucursal() != null ? m.getSucursal().getNombre() : "Global",
                 m.getCantidad(), m.getCantidadAntes(), m.getCantidadDespues(),
                 m.getReferenciaId(), m.getReferenciaTipo(),
-                m.getUsuario() != null ? m.getUsuario().getNombre() : null,
+                m.getUsuario() != null ? m.getUsuario().getNombre() : "Sistema",
                 m.getMotivo(),
                 m.getObservaciones(),
                 m.getCreatedAt()

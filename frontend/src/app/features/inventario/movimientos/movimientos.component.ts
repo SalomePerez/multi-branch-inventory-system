@@ -18,8 +18,10 @@ export class MovimientosComponent implements OnInit {
   sucursales: Sucursal[] = [];
   sucursalId: number | null = null;
   desde: string = '';
+  thisMonth: string = '';
   hasta: string = '';
   verTodas = false;
+  filtroCategoria: 'TODOS' | 'VENTAS' | 'COMPRAS' | 'TRANSFERENCIAS' | 'DEVOLUCIONES' | 'CATALOGO' | 'ACCESOS' | 'AJUSTES' = 'TODOS';
 
   movimientos: any[] = [];
   loading = false;
@@ -58,22 +60,44 @@ export class MovimientosComponent implements OnInit {
 
   consultar(): void {
     if (!this.desde || !this.hasta) return;
-    if (this.verTodas) {
-      this.loading = true;
-      this.error = '';
-      this.reporteService.movimientosTodas(this.desde, this.hasta).subscribe({
-        next: d => { this.movimientos = d; this.loading = false; },
-        error: () => { this.error = 'Error al cargar movimientos'; this.loading = false; }
-      });
-    } else {
-      if (!this.sucursalId) return;
-      this.loading = true;
-      this.error = '';
-      this.reporteService.movimientos(this.sucursalId, this.desde, this.hasta).subscribe({
-        next: d => { this.movimientos = d; this.loading = false; },
-        error: () => { this.error = 'Error al cargar movimientos'; this.loading = false; }
-      });
-    }
+    this.loading = true;
+    this.error = '';
+    const obs = this.verTodas 
+      ? this.reporteService.movimientosTodas(this.desde, this.hasta)
+      : this.reporteService.movimientos(this.sucursalId!, this.desde, this.hasta);
+
+    obs.subscribe({
+      next: d => { this.movimientos = d; this.loading = false; },
+      error: () => { this.error = 'Error al cargar movimientos'; this.loading = false; }
+    });
+  }
+
+  get movimientosFiltrados(): any[] {
+    if (this.filtroCategoria === 'TODOS') return this.movimientos;
+    
+    return this.movimientos.filter(m => {
+      const tipo = m.tipo || '';
+      const ref = (m.referenciaTipo || '').toUpperCase();
+      const mot = (m.motivo || '').toUpperCase();
+
+      switch (this.filtroCategoria) {
+        case 'VENTAS': 
+          return tipo === 'SALIDA' && (ref === 'VENTA' || mot.includes('VENTA'));
+        case 'COMPRAS': 
+          return tipo === 'ENTRADA' && (ref.includes('COMPRA') || mot.includes('COMPRA') || mot.includes('PRODUCTOS'));
+        case 'TRANSFERENCIAS': 
+          return tipo.includes('TRANSFERENCIA') || ref.includes('TRANSFERENCIA');
+        case 'DEVOLUCIONES': 
+          return tipo === 'DEVOLUCION' || mot.includes('DEV');
+        case 'ACCESOS': 
+          return tipo === 'LOGIN';
+        case 'CATALOGO': 
+          return tipo.startsWith('PRODUCTO_');
+        case 'AJUSTES': 
+          return tipo === 'AJUSTE' || mot.includes('AJUSTE') || mot.includes('INICIAL');
+        default: return true;
+      }
+    });
   }
 
   getTipoClass(tipo: string): string {
@@ -84,8 +108,32 @@ export class MovimientosComponent implements OnInit {
       TRANSFERENCIA_SALIDA:   'status-info',
       AJUSTE:                 'status-warning',
       DEVOLUCION:             'status-purple',
+      PRODUCTO_CREADO:        'status-success',
+      PRODUCTO_ACTUALIZADO:   'status-info',
+      PRODUCTO_ELIMINADO:     'status-danger',
+      LOGIN:                  'status-primary',
     };
     return map[tipo] ?? 'status-default';
+  }
+
+  getTipoLabel(tipo: string): string {
+    const labels: Record<string, string> = {
+      ENTRADA: 'Entrada Stock',
+      SALIDA: 'Salida Stock',
+      TRANSFERENCIA_ENTRADA: 'Recepción Transf.',
+      TRANSFERENCIA_SALIDA: 'Envío Transf.',
+      AJUSTE: 'Ajuste Manual',
+      DEVOLUCION: 'Devolución',
+      PRODUCTO_CREADO: 'Catálogo: Nuevo',
+      PRODUCTO_ACTUALIZADO: 'Catálogo: Edición',
+      PRODUCTO_ELIMINADO: 'Catálogo: Baja',
+      LOGIN: 'Acceso: Login'
+    };
+    return labels[tipo] ?? tipo;
+  }
+
+  esEventoGlobal(m: any): boolean {
+    return m.tipo === 'LOGIN' || m.tipo.startsWith('PRODUCTO_');
   }
 
   esSalida(tipo: string): boolean {

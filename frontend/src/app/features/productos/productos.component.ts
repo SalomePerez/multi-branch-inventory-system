@@ -23,10 +23,10 @@ export class ProductosComponent implements OnInit {
   form!: FormGroup;
   catForm!: FormGroup;
   
-  // Deactivación
+  // Eliminación
   mostrarModalMotivo = false;
-  motivoDesactivacion = '';
-  productoADesactivar: number | null = null;
+  motivoEliminacion = '';
+  productoAEliminar: number | null = null;
 
   constructor(private productoService: ProductoService, private fb: FormBuilder) {}
 
@@ -106,15 +106,15 @@ export class ProductosComponent implements OnInit {
     });
   }
 
-  desactivar(id: number) {
-    this.productoADesactivar = id;
-    this.motivoDesactivacion = '';
+  eliminar(id: number) {
+    this.productoAEliminar = id;
+    this.motivoEliminacion = '';
     this.mostrarModalMotivo = true;
   }
 
-  confirmarDesactivacion() {
-    if (!this.productoADesactivar || !this.motivoDesactivacion.trim()) return;
-    this.productoService.desactivar(this.productoADesactivar, this.motivoDesactivacion).subscribe({
+  confirmarEliminacion() {
+    if (!this.productoAEliminar || !this.motivoEliminacion.trim()) return;
+    this.productoService.desactivar(this.productoAEliminar, this.motivoEliminacion).subscribe({
       next: () => {
         this.mostrarModalMotivo = false;
         this.cargar();

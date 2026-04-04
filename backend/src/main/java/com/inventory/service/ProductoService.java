@@ -18,6 +18,7 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class ProductoService {
 
+    private final AuditoriaService auditoriaService;
     private final ProductoRepository productoRepository;
     private final CategoriaRepository categoriaRepository;
     private final UnidadMedidaRepository unidadMedidaRepository;
@@ -55,7 +56,12 @@ public class ProductoService {
                 .unidadMedida(unidad)
                 .build();
 
-        return toResponse(productoRepository.save(producto));
+        Producto productoGuardado = productoRepository.save(producto);
+        
+        auditoriaService.registrar(com.inventory.entity.enums.TipoMovimiento.PRODUCTO_CREADO, 
+                productoGuardado, null, "Creación", "Producto registrado en el catálogo");
+
+        return toResponse(productoGuardado);
     }
 
     @Transactional
@@ -68,6 +74,14 @@ public class ProductoService {
 
         Categoria categoria = categoriaRepository.findById(req.categoriaId())
                 .orElseThrow(() -> new IllegalArgumentException("Categoría no encontrada: " + req.categoriaId()));
+
+        StringBuilder cambios = new StringBuilder("Actualización de datos");
+        if (producto.getPrecioCosto().compareTo(req.precioCosto()) != 0) {
+            cambios.append(String.format(". Costo: $%s -> $%s", producto.getPrecioCosto(), req.precioCosto()));
+        }
+        if (producto.getPrecioVenta().compareTo(req.precioVenta()) != 0) {
+            cambios.append(String.format(". Venta: $%s -> $%s", producto.getPrecioVenta(), req.precioVenta()));
+        }
 
         producto.setSku(req.sku());
         producto.setNombre(req.nombre());
@@ -82,7 +96,12 @@ public class ProductoService {
             producto.setUnidadMedida(unidad);
         }
 
-        return toResponse(productoRepository.save(producto));
+        Producto productoGuardado = productoRepository.save(producto);
+        
+        auditoriaService.registrar(com.inventory.entity.enums.TipoMovimiento.PRODUCTO_ACTUALIZADO, 
+                productoGuardado, null, "Edición", cambios.toString());
+
+        return toResponse(productoGuardado);
     }
 
     @Transactional
@@ -91,6 +110,9 @@ public class ProductoService {
         producto.setActivo(false);
         producto.setMotivoDesactivacion(motivo);
         productoRepository.save(producto);
+        
+        auditoriaService.registrar(com.inventory.entity.enums.TipoMovimiento.PRODUCTO_ELIMINADO, 
+                producto, null, "Eliminación", motivo);
     }
 
     // --- Categorías ---

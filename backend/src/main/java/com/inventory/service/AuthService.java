@@ -16,6 +16,7 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
     private final UsuarioDetailsService userDetailsService;
+    private final AuditoriaService auditoriaService;
 
     public LoginResponse login(LoginRequest request) {
         authenticationManager.authenticate(
@@ -24,6 +25,9 @@ public class AuthService {
 
         Usuario usuario = (Usuario) userDetailsService.loadUserByUsername(request.email());
         String token = jwtService.generateToken(usuario);
+        
+        auditoriaService.registrar(com.inventory.entity.enums.TipoMovimiento.LOGIN, 
+                null, usuario.getSucursal(), "Inicio de Sesión", "El usuario ha ingresado al sistema");
 
         return new LoginResponse(
                 token,

@@ -21,11 +21,11 @@ public class Movimiento {
     private TipoMovimiento tipo;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "producto_id", nullable = false)
+    @JoinColumn(name = "producto_id", nullable = true)
     private Producto producto;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "sucursal_id", nullable = false)
+    @JoinColumn(name = "sucursal_id", nullable = true)
     private Sucursal sucursal;
 
     @Column(nullable = false)

@@ -95,3 +95,7 @@ table {
   padding: 32px;
   box-shadow: $shadow-xl;
 }
+.btn-group {
+  display: flex;
+  gap: 12px;
+}

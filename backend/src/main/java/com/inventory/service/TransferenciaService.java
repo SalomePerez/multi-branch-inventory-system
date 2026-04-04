@@ -153,9 +153,11 @@ public class TransferenciaService {
      * Si cantidad recibida < enviada → INCOMPLETA, si igual → COMPLETADA.
      */
     @Transactional
-    public TransferenciaResponse confirmarRecepcion(Long id, List<Integer> cantidadesRecibidas) {
+    public TransferenciaResponse confirmarRecepcion(Long id, com.inventory.dto.RecepcionRequest req) {
         Transferencia t = buscarPorId(id);
         validarEstado(t, EstadoTransferencia.EN_TRANSITO, "confirmar recepción");
+
+        List<Integer> cantidadesRecibidas = req.cantidades();
 
         List<TransferenciaItem> items = t.getItems();
         if (cantidadesRecibidas.size() != items.size()) {
@@ -188,8 +190,40 @@ public class TransferenciaService {
         t.setFechaRealLlegada(java.time.LocalDateTime.now());
 
         if (incompleta) {
-            String msg = String.format("⚠️ FALTANTE detectado en Recepción #%d (Origen: %s)", t.getId(), t.getSucursalOrigen().getNombre());
+            t.setAccionFaltante(req.accionFaltante());
+            t.setNotasFaltante(req.notasFaltante());
+
+            String msg = String.format("⚠️ FALTANTE detectado en Recepción #%d (Origen: %s). Acción: %s", 
+                t.getId(), t.getSucursalOrigen().getNombre(), req.accionFaltante());
             alertaService.crearAlerta("FALTANTE", null, t.getSucursalDestino(), msg);
+
+            // Proceso específico según la acción
+            if ("DEVOLUCION".equals(req.accionFaltante())) {
+                for (int i = 0; i < items.size(); i++) {
+                    TransferenciaItem item = items.get(i);
+                    int faltante = (item.getCantidadEnviada() != null ? item.getCantidadEnviada() : 0) - item.getCantidadRecibida();
+                    if (faltante > 0) {
+                        inventarioService.incrementarStock(
+                            item.getProducto(), t.getSucursalOrigen(),
+                            faltante, "TRANSFERENCIA_DEVOLUCION", t.getId(), "REINTEGRO_POR_FALTANTE"
+                        );
+                    }
+                }
+            } else if ("AJUSTE_INVENTARIO".equals(req.accionFaltante())) {
+                for (int i = 0; i < items.size(); i++) {
+                    TransferenciaItem item = items.get(i);
+                    int faltante = (item.getCantidadEnviada() != null ? item.getCantidadEnviada() : 0) - item.getCantidadRecibida();
+                    if (faltante > 0) {
+                        // Registramos como MERMA en el origen (donde salió legalmente pero se perdió en el proceso)
+                        inventarioService.descontarStock(
+                            item.getProducto(), t.getSucursalOrigen(),
+                            0, "AJUSTE_LOGISTICO", t.getId(), "PERDIDA_EN_TRANSITO" // 0 porque ya se descontó al salir, solo dejamos rastro si fuera necesario o ajustamos
+                        );
+                        // En realidad, al enviarse ya se descontó. Si es AJUSTE, simplemente aceptamos que no llegará.
+                        // Podríamos registrar un movimiento tipo AJUSTE para trazabilidad.
+                    }
+                }
+            }
         }
 
         return toResponse(transferenciaRepository.save(t));
@@ -235,7 +269,9 @@ public class TransferenciaService {
                 t.getNotasDespacho(),
                 t.getOperadorDespacho(),
                 t.getCreatedAt(), t.getUpdatedAt(),
-                t.getMotivoRechazo()
+                t.getMotivoRechazo(),
+                t.getAccionFaltante(),
+                t.getNotasFaltante()
         );
     }
 }

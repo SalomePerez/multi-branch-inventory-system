@@ -115,6 +115,12 @@ public class ProductoService {
                 producto, null, "Eliminación", motivo);
     }
 
+    // --- Unidades de Medida ---
+
+    public List<UnidadMedida> listarUnidades() {
+        return unidadMedidaRepository.findAll();
+    }
+
     // --- Categorías ---
 
     public List<CategoriaDTO> listarCategorias() {

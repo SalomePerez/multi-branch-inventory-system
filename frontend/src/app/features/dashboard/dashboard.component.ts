@@ -3,7 +3,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink, Router } from '@angular/router';
 import { InventarioService } from '../../core/services/inventario.service';
-import { AlertaService, Alerta } from '../../core/services/alerta.service';
+import { AlertaService } from '../../core/services/alerta.service';
+import { Alerta } from '../../core/models/alerta.model';
 import { SucursalService } from '../../core/services/sucursal.service';
 import { AuthService } from '../../core/services/auth.service';
 import { ProductoService } from '../../core/services/producto.service';
@@ -187,21 +188,17 @@ export class DashboardComponent implements OnInit {
       this.totalProductosCatalogo = p.length;
     });
 
-    this.alertaService.listar().subscribe(a => {
+    this.alertaService.listarNoLeidas().subscribe(res => {
       const user = this.authService.user();
-      // Si no es admin, filtramos alertas por su sucursal (aunque el backend debería hacerlo, reforzamos)
       if (user?.rol !== 'ADMINISTRADOR') {
-        const filtradas = a.filter(al => al.sucursalId === user?.sucursalId);
-        this.alertas = filtradas;
-        this.totalAlertas = filtradas.length;
+        const alertasSede = res.filter(a => a.sucursalId === user?.sucursalId);
+        this.alertas = alertasSede;
+        this.totalAlertas = alertasSede.length;
       } else {
-        this.alertas = a;
-        this.totalAlertas = a.length;
+        this.alertas = res;
+        this.totalAlertas = res.length;
       }
     });
-
-    // El contador original de la base se omite para usar el filtrado
-    // this.alertaService.contarNoLeidas().subscribe(r => this.totalAlertas = r.total);
 
     // Stock crítico de TODAS las sucursales
     this.inventarioService.listarTodo().subscribe(items => {

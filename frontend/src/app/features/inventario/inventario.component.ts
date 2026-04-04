@@ -1,8 +1,9 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
+import { forkJoin, Subject, takeUntil } from 'rxjs';
 import { InventarioService } from '../../core/services/inventario.service';
 import { ProductoService } from '../../core/services/producto.service';
 import { SucursalService } from '../../core/services/sucursal.service';
@@ -18,8 +19,8 @@ import { Sucursal } from '../../core/models/sucursal.model';
   templateUrl: './inventario.component.html',
   styleUrl: './inventario.component.scss'
 })
-export class InventarioComponent implements OnInit {
-
+export class InventarioComponent implements OnInit, OnDestroy {
+  private destroy$ = new Subject<void>();
   inventario: InventarioItem[] = [];
   searchTerm = '';
   productos: Producto[] = [];
@@ -71,67 +72,97 @@ export class InventarioComponent implements OnInit {
       cantCtrl.updateValueAndValidity();
     });
 
-    this.route.queryParams.subscribe(params => {
+    // Cargar sucursales y productos en paralelo para evitar waterfalls
+    forkJoin([
+      this.sucursalService.listar(),
+      this.productoService.listar()
+    ]).pipe(takeUntil(this.destroy$)).subscribe(([sucursales, productos]) => {
+      this.sucursales = sucursales;
+      this.productos = productos;
+
+      const params = this.route.snapshot.queryParams;
       this.filtroCritico = params['filtro'] === 'critico';
+      const user = this.authService.user();
+
       if (params['sucursalId']) {
         this.sucursalSeleccionada = +params['sucursalId'];
+        this.verTodo = false;
+      } else if (this.isAdmin) {
+        this.sucursalSeleccionada = user?.sucursalId ?? (sucursales[0]?.id ?? null);
+        this.verTodo = false;
+      } else if (user?.sucursalId) {
+        this.sucursalSeleccionada = user.sucursalId;
+        this.verTodo = false;
+      } else if (sucursales.length > 0) {
+        this.sucursalSeleccionada = sucursales[0].id;
+        this.verTodo = false;
       }
-      this.cargarInventario();
-    });
 
-    this.sucursalService.listar().subscribe(s => {
-      this.sucursales = s;
-      const user = this.authService.user();
-      if (!this.sucursalSeleccionada) {
-        if (user?.sucursalId) {
-          this.sucursalSeleccionada = user.sucursalId;
-        } else if (s.length > 0) {
-          this.sucursalSeleccionada = s[0].id;
-        }
-      }
-      this.cargarInventario();
+      this.cargar();
     });
-
-    this.productoService.listar().subscribe(p => this.productos = p);
   }
 
-  cargarInventario() {
+  ngOnDestroy() {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  cargar() {
     this.loading = true;
-    const obs = this.verTodo
+    this.error = '';
+
+    const verTodoEfectivo = this.verTodo || this.sucursalSeleccionada === 0;
+
+    const obs = verTodoEfectivo
       ? this.inventarioService.listarTodo()
       : this.sucursalSeleccionada
         ? this.inventarioService.listarPorSucursal(this.sucursalSeleccionada)
         : null;
 
-    if (!obs) { this.loading = false; return; }
+    if (!obs) {
+      this.loading = false;
+      return;
+    }
 
     obs.subscribe({
-      next: (data) => {
+      next: data => {
         this.inventario = this.filtroCritico ? data.filter(i => i.bajoCritico) : data;
         this.loading = false;
       },
-      error: () => { this.error = 'Error al cargar inventario'; this.loading = false; }
+      error: () => {
+        this.error = 'Error al cargar inventario';
+        this.loading = false;
+      }
     });
   }
 
-  toggleVerTodo() {
-    this.verTodo = !this.verTodo;
-    this.filtroCritico = false;
-    this.cargarInventario();
-  }
-
   get filteredInventario(): InventarioItem[] {
-    if (!this.searchTerm) return this.inventario;
+    const validos = this.inventario.filter(i => !!i.productoId);
+    if (!this.searchTerm) return validos;
     const term = this.searchTerm.toLowerCase();
-    return this.inventario.filter(i => 
-      (i.productoSku?.toLowerCase().includes(term)) || 
+    return validos.filter(i =>
+      (i.productoSku?.toLowerCase().includes(term)) ||
       (i.productoNombre?.toLowerCase().includes(term))
     );
   }
 
   cambiarSucursal(event: Event) {
-    this.sucursalSeleccionada = +(event.target as HTMLSelectElement).value;
-    this.cargarInventario();
+    const val = +(event.target as HTMLSelectElement).value;
+    this.sucursalSeleccionada = val;
+    this.verTodo = (val === 0);
+    this.cargar();
+  }
+
+  toggleVerTodo() {
+    this.verTodo = !this.verTodo;
+    if (this.verTodo) {
+      this.sucursalSeleccionada = 0;
+    } else {
+      const user = this.authService.user();
+      this.sucursalSeleccionada = user?.sucursalId || (this.sucursales[0]?.id || null);
+    }
+    this.filtroCritico = false;
+    this.cargar();
   }
 
   abrirAjuste(item?: InventarioItem) {
@@ -158,7 +189,7 @@ export class InventarioComponent implements OnInit {
       next: () => {
         this.mostrarAjuste = false;
         this.success = 'Stock actualizado correctamente';
-        this.cargarInventario();
+        this.cargar();
         setTimeout(() => this.success = '', 3000);
       },
       error: (err) => {
@@ -168,9 +199,44 @@ export class InventarioComponent implements OnInit {
     });
   }
 
+  eliminar(item: InventarioItem) {
+    if (!confirm(`¿Está seguro de eliminar el registro de inventario para ${item.productoNombre}? Esta acción quedará registrada para auditoría.`)) {
+      return;
+    }
+    this.loading = true;
+    this.inventarioService.eliminar(item.id).subscribe({
+      next: () => {
+        this.success = 'Registro eliminado correctamente';
+        this.cargar();
+        setTimeout(() => this.success = '', 3000);
+      },
+      error: (err) => {
+        this.error = err.error?.detail || 'Error al eliminar registro';
+        this.loading = false;
+      }
+    });
+  }
+
+  get isAdmin(): boolean {
+    return this.authService.user()?.rol === 'ADMINISTRADOR';
+  }
+
+  get isGerente(): boolean {
+    return this.authService.user()?.rol === 'GERENTE_SUCURSAL';
+  }
+
+  get isOperador(): boolean {
+    return this.authService.user()?.rol === 'OPERADOR_INVENTARIO';
+  }
+
   get isGerenteOrAdmin(): boolean {
-    const rol = this.authService.user()?.rol;
-    return rol === 'ADMINISTRADOR' || rol === 'GERENTE_SUCURSAL';
+    return this.isAdmin || this.isGerente;
+  }
+
+  canEdit(item: InventarioItem): boolean {
+    const user = this.authService.user();
+    if (this.isAdmin) return true;
+    return item.sucursalId === user?.sucursalId;
   }
 
   getNombreSucursal(): string {

@@ -82,7 +82,11 @@ export class VentasComponent implements OnInit {
     this.sucursalService.listar().subscribe(s => {
       this.sucursales = s;
       const user = this.authService.user();
-      this.sucursalSeleccionada = user?.sucursalId ?? (s[0]?.id ?? null);
+      
+      // Si no hay sucursal seleccionada, priorizar la del usuario o la primera de la lista
+      if (!this.sucursalSeleccionada && !this.verTodas) {
+        this.sucursalSeleccionada = user?.sucursalId ?? (s[0]?.id ?? null);
+      }
       this.cargar();
     });
     this.productoService.listar().subscribe(p => this.productos = p);
@@ -95,7 +99,11 @@ export class VentasComponent implements OnInit {
 
   cargar() {
     this.loading = true;
-    const obs = this.verTodas
+    
+    // Si sucursalSeleccionada es 0, significa "Ver Todas"
+    const verTodoEfectivo = this.verTodas || this.sucursalSeleccionada === 0;
+
+    const obs = verTodoEfectivo
       ? this.ventaService.listarTodas()
       : this.sucursalSeleccionada
         ? this.ventaService.listarPorSucursal(this.sucursalSeleccionada)
@@ -107,7 +115,7 @@ export class VentasComponent implements OnInit {
       error: () => { this.error = 'Error al cargar ventas'; this.loading = false; }
     });
 
-    if (this.sucursalSeleccionada && !this.verTodas) {
+    if (this.sucursalSeleccionada && !verTodoEfectivo) {
       this.inventarioService.listarPorSucursal(this.sucursalSeleccionada).subscribe((items: any[]) => {
         this.inventarioSucursal.clear();
         items.forEach((i: any) => this.inventarioSucursal.set(i.productoId, i.cantidad));
@@ -117,12 +125,19 @@ export class VentasComponent implements OnInit {
 
   toggleVerTodas() {
     this.verTodas = !this.verTodas;
+    if (this.verTodas) {
+      this.sucursalSeleccionada = 0;
+    } else {
+      const user = this.authService.user();
+      this.sucursalSeleccionada = user?.sucursalId || (this.sucursales[0]?.id || null);
+    }
     this.cargar();
   }
 
   cambiarSucursal(event: Event) {
-    this.sucursalSeleccionada = +(event.target as HTMLSelectElement).value;
-    this.verTodas = false;
+    const val = +(event.target as HTMLSelectElement).value;
+    this.sucursalSeleccionada = val;
+    this.verTodas = (val === 0);
     this.cargar();
   }
 

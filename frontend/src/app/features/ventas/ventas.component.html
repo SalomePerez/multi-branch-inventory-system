@@ -5,22 +5,15 @@
       <p class="subtitle">Registro de ventas minoristas con descuento automático de stock</p>
     </div>
     <div class="header-actions">
-      @if (verTodas) {
-        <span class="badge badge-info item-filter">Todas las sucursales</span>
-        <button class="btn-sm btn-secondary" (click)="toggleVerTodas()">Ver mi sucursal</button>
-      } @else {
-        <div class="select-wrapper">
-          <lucide-icon name="building-2" [size]="14"></lucide-icon>
-          <select (change)="cambiarSucursal($event)">
-            @for (s of sucursales; track s.id) {
-              <option [value]="s.id" [selected]="s.id === sucursalSeleccionada">{{ s.nombre }}</option>
-            }
-          </select>
-        </div>
-        @if (isGerenteOrAdmin) {
-          <button class="btn-sm btn-secondary" (click)="toggleVerTodas()">Ver todas</button>
-        }
-      }
+      <div class="select-wrapper">
+        <lucide-icon name="building-2" [size]="14"></lucide-icon>
+        <select (change)="cambiarSucursal($event)">
+          <option value="0" [selected]="verTodas">Ver todas las sucursales</option>
+          @for (s of sucursales; track s.id) {
+            <option [value]="s.id" [selected]="!verTodas && s.id === sucursalSeleccionada">{{ s.nombre }}</option>
+          }
+        </select>
+      </div>
       <button class="btn-primary" (click)="abrirFormulario()">+ Nueva Venta</button>
     </div>
   </div>

@@ -66,7 +66,7 @@ public class TransferenciaController {
     @PatchMapping("/{id}/recibir")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'GERENTE_SUCURSAL', 'OPERADOR_INVENTARIO')")
     public ResponseEntity<TransferenciaResponse> recibirTransferencia(@PathVariable Long id,
-                                                                        @RequestBody List<Integer> cantidadesRecibidas) {
-        return ResponseEntity.ok(transferenciaService.confirmarRecepcion(id, cantidadesRecibidas));
+                                                                        @RequestBody com.inventory.dto.RecepcionRequest req) {
+        return ResponseEntity.ok(transferenciaService.confirmarRecepcion(id, req));
     }
 }

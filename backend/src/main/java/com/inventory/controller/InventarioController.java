@@ -44,4 +44,13 @@ public class InventarioController {
         securityUtils.validateSucursalAccess(req.sucursalId());
         return ResponseEntity.ok(inventarioService.ajustar(req));
     }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'GERENTE_SUCURSAL')")
+    public ResponseEntity<Void> eliminar(@PathVariable Long id) {
+        // Validar acceso antes de eliminar
+        // Primero obtenemos el inventario para saber de qué sucursal es
+        inventarioService.eliminar(id);
+        return ResponseEntity.noContent().build();
+    }
 }

@@ -81,6 +81,12 @@ public class Transferencia {
     @Column(name = "operador_despacho")
     private String operadorDespacho;
 
+    @Column(name = "accion_faltante", length = 50)
+    private String accionFaltante;
+
+    @Column(name = "notas_faltante", columnDefinition = "TEXT")
+    private String notasFaltante;
+
     @Column(name = "motivo_rechazo", columnDefinition = "TEXT")
     private String motivoRechazo;
 

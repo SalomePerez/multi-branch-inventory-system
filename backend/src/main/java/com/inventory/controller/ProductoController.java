@@ -3,6 +3,7 @@ package com.inventory.controller;
 import com.inventory.dto.CategoriaDTO;
 import com.inventory.dto.ProductoRequest;
 import com.inventory.dto.ProductoResponse;
+import com.inventory.entity.UnidadMedida;
 import com.inventory.service.ProductoService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -48,6 +49,13 @@ public class ProductoController {
     public ResponseEntity<Void> desactivar(@PathVariable Long id, @RequestParam String motivo) {
         productoService.desactivar(id, motivo);
         return ResponseEntity.noContent().build();
+    }
+
+    // --- Unidades de Medida ---
+
+    @GetMapping("/unidades")
+    public ResponseEntity<List<UnidadMedida>> listarUnidades() {
+        return ResponseEntity.ok(productoService.listarUnidades());
     }
 
     // --- Categorías ---

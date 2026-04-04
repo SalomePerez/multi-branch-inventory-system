@@ -1,38 +1,34 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { Alerta } from '../models/alerta.model';
 import { environment } from '../../../environments/environment';
 
-export interface Alerta {
-  id: number;
-  tipo: string;
-  productoNombre?: string;
-  sucursalId?: number;
-  sucursalNombre?: string;
-  mensaje: string;
-  leida: boolean;
-  createdAt: string;
-}
-
-@Injectable({ providedIn: 'root' })
+@Injectable({
+  providedIn: 'root'
+})
 export class AlertaService {
-  private url = `${environment.apiUrl}/alertas`;
+  private apiUrl = `${environment.apiUrl}/alertas`;
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) { }
 
-  listar(): Observable<Alerta[]> {
-    return this.http.get<Alerta[]>(this.url);
+  listarNoLeidas(): Observable<Alerta[]> {
+    return this.http.get<Alerta[]>(this.apiUrl);
+  }
+
+  listarPorSucursal(sucursalId: number): Observable<Alerta[]> {
+    return this.http.get<Alerta[]>(`${this.apiUrl}/sucursal/${sucursalId}`);
   }
 
   contarNoLeidas(): Observable<{ total: number }> {
-    return this.http.get<{ total: number }>(`${this.url}/count`);
+    return this.http.get<{ total: number }>(`${this.apiUrl}/count`);
   }
 
   marcarLeida(id: number): Observable<void> {
-    return this.http.patch<void>(`${this.url}/${id}/leer`, {});
+    return this.http.patch<void>(`${this.apiUrl}/${id}/leer`, {});
   }
 
   marcarTodasLeidas(): Observable<void> {
-    return this.http.patch<void>(`${this.url}/leer-todas`, {});
+    return this.http.patch<void>(`${this.apiUrl}/leer-todas`, {});
   }
 }

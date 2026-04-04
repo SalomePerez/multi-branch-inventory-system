@@ -9,26 +9,15 @@
         <lucide-icon name="search" [size]="16"></lucide-icon>
         <input type="text" [(ngModel)]="searchTerm" placeholder="Buscar por SKU o Nombre..." />
       </div>
-      @if (filtroCritico) {
-        <span class="badge badge-danger item-filter">Filtrado: Stock Crítico</span>
-        <button class="btn-sm btn-secondary" (click)="filtroCritico = false; cargarInventario()">Quitar filtro</button>
-      }
-      @if (verTodo) {
-        <span class="badge badge-info item-filter">Todas las sucursales</span>
-        <button class="btn-sm btn-secondary" (click)="toggleVerTodo()">Ver mi sucursal</button>
-      } @else {
-        <div class="select-wrapper">
-          <lucide-icon name="building-2" [size]="14"></lucide-icon>
-          <select (change)="cambiarSucursal($event)">
-            @for (s of sucursales; track s.id) {
-              <option [value]="s.id" [selected]="s.id === sucursalSeleccionada">{{ s.nombre }}</option>
-            }
-          </select>
-        </div>
-        @if (isGerenteOrAdmin) {
-          <button class="btn-sm btn-secondary" (click)="toggleVerTodo()">Ver todas</button>
-        }
-      }
+      <div class="select-wrapper">
+        <lucide-icon name="building-2" [size]="14"></lucide-icon>
+        <select (change)="cambiarSucursal($event)" [disabled]="!isGerenteOrAdmin && !isOperador">
+          <option value="0" [selected]="verTodo">Ver todas las sucursales</option>
+          @for (s of sucursales; track s.id) {
+            <option [value]="s.id" [selected]="!verTodo && s.id === sucursalSeleccionada">{{ s.nombre }}</option>
+          }
+        </select>
+      </div>
       <button class="btn-primary" (click)="abrirAjuste()">
         <lucide-icon name="plus" [size]="18"></lucide-icon>
         Ajustar Stock
@@ -75,7 +64,16 @@
               </td>
               <td class="date-col">{{ item.updatedAt | date:'dd/MM/yy HH:mm' }}</td>
               <td class="actions">
-                <button class="btn-sm btn-edit" (click)="abrirAjuste(item)">Ajustar</button>
+                <div class="btn-group">
+                  <button class="btn-sm btn-edit" [disabled]="!canEdit(item)" (click)="abrirAjuste(item)">
+                    <lucide-icon name="edit-3" [size]="14"></lucide-icon> Ajustar
+                  </button>
+                  @if (isGerenteOrAdmin && canEdit(item)) {
+                    <button class="btn-sm btn-danger" (click)="eliminar(item)">
+                      <lucide-icon name="trash-2" [size]="14"></lucide-icon> Eliminar
+                    </button>
+                  }
+                </div>
               </td>
             </tr>
           } @empty {
@@ -110,11 +108,14 @@
 
         <div class="form-group">
           <label>Sucursal *</label>
-          <select formControlName="sucursalId">
+          <select formControlName="sucursalId" [attr.disabled]="!isAdmin ? true : null">
             @for (s of sucursales; track s.id) {
               <option [ngValue]="s.id">{{ s.nombre }}</option>
             }
           </select>
+          @if (!isAdmin) {
+            <small class="text-slate-500">Solo puede realizar ajustes en su sucursal asignada.</small>
+          }
         </div>
 
         <div class="form-group">

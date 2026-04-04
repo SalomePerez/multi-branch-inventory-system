@@ -27,7 +27,9 @@ public record TransferenciaResponse(
         String operadorDespacho,
         LocalDateTime createdAt,
         LocalDateTime updatedAt,
-        String motivoRechazo
+        String motivoRechazo,
+        String accionFaltante,
+        String notasFaltante
 ) {
     public record ItemTransferenciaResponse(
             Long productoId,

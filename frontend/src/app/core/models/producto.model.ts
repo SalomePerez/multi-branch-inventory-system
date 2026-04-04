@@ -5,6 +5,12 @@ export interface Categoria {
   activa?: boolean;
 }
 
+export interface UnidadMedida {
+  id: number;
+  nombre: string;
+  abreviatura: string;
+}
+
 export interface Producto {
   id: number;
   sku: string;
@@ -14,7 +20,8 @@ export interface Producto {
   categoriaNombre: string;
   precioCosto: number;
   precioVenta: number;
-  unidadMedida: string;
+  unidadMedidaNombre: string;
+  unidadMedidaAbreviatura: string;
   activo: boolean;
   createdAt: string;
 }
@@ -26,5 +33,5 @@ export interface ProductoRequest {
   categoriaId: number;
   precioCosto: number;
   precioVenta: number;
-  unidadMedida?: string;
+  unidadMedidaId?: number;
 }

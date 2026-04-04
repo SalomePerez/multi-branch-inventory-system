@@ -5,6 +5,51 @@
         <div class="logo-icon"><lucide-icon name="package" [size]="24"></lucide-icon></div>
         <h1>InvManager</h1>
       </div>
+      
+      <!-- Notifications -->
+      <div class="notifications-hub">
+        <button class="btn-icon bell-btn" (click)="mostrarNotificaciones = !mostrarNotificaciones">
+          <lucide-icon name="bell" [size]="20"></lucide-icon>
+          @if (unreadCount > 0) {
+            <span class="notification-badge">{{ unreadCount }}</span>
+          }
+        </button>
+
+        @if (mostrarNotificaciones) {
+          <div class="notifications-dropdown card" (click)="$event.stopPropagation()">
+            <div class="dropdown-header">
+              <h3>Alertas Automáticas</h3>
+              <div class="header-actions">
+                <button class="btn-text" (click)="toggleFiltro()">
+                  {{ filtroGlobal ? 'Ver mi sede' : 'Ver Todas' }}
+                </button>
+                <button class="btn-text" (click)="leerTodas()">Marcar leídas</button>
+              </div>
+            </div>
+            <div class="notifications-list">
+              @for (a of alertas; track a.id) {
+                <div class="notification-item" [ngClass]="a.tipo">
+                  <div class="notif-icon">
+                    <lucide-icon [name]="a.tipo === 'STOCK_BAJO' ? 'alert-triangle' : 'trending-up'" [size]="16"></lucide-icon>
+                  </div>
+                  <div class="notif-content">
+                    <p class="notif-msg">{{ a.mensaje }}</p>
+                    <div class="notif-meta">
+                      <span class="notif-time">{{ a.createdAt | date:'shortTime' }}</span>
+                      <button class="btn-check" (click)="leerAlerta(a.id)" title="Eliminar">✕</button>
+                    </div>
+                  </div>
+                </div>
+              } @empty {
+                <div class="empty-notif">
+                  <lucide-icon name="check-circle" [size]="24"></lucide-icon>
+                  <p>Sin alertas críticas por ahora.</p>
+                </div>
+              }
+            </div>
+          </div>
+        }
+      </div>
     </div>
 
     <nav class="sidebar-nav">

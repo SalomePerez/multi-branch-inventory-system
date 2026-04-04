@@ -24,11 +24,17 @@ public class LogisticaController {
     private final TransferenciaRepository transferenciaRepository;
 
     @GetMapping("/envios-activos")
-    public ResponseEntity<List<TransferenciaResponse>> enviosActivos() {
+    public ResponseEntity<List<TransferenciaResponse>> enviosActivos(@RequestParam(required = false) String estado) {
         return ResponseEntity.ok(transferenciaRepository.findAll().stream()
-                .filter(t -> t.getEstado() == EstadoTransferencia.APROBADA || 
-                            t.getEstado() == EstadoTransferencia.EN_TRANSITO)
-                .map(t -> transferenciaService.toResponse(t)) // Usamos el método de mapeo existente (que ahora es público)
+                .filter(t -> {
+                    if (estado != null && !estado.isEmpty() && !"TODOS".equals(estado)) {
+                        return t.getEstado().name().equals(estado);
+                    }
+                    // Por defecto mostramos todo lo relevante a logística (excepto rechazadas/pendientes iniciales)
+                    return t.getEstado() != EstadoTransferencia.PENDIENTE && t.getEstado() != EstadoTransferencia.RECHAZADA;
+                })
+                .sorted((a, b) -> b.getUpdatedAt().compareTo(a.getUpdatedAt()))
+                .map(t -> transferenciaService.toResponse(t))
                 .toList());
     }
 
@@ -45,15 +51,8 @@ public class LogisticaController {
     @PostMapping("/entregar/{id}")
     @org.springframework.transaction.annotation.Transactional
     public ResponseEntity<Void> entregar(@PathVariable Long id,
-                                          @RequestBody(required = false) com.inventory.dto.RecepcionRequest req) {
-        Transferencia t = transferenciaRepository.findById(id).orElseThrow();
-        List<Integer> cants;
-        if (req != null && req.cantidades() != null && !req.cantidades().isEmpty()) {
-            cants = req.cantidades();
-        } else {
-            cants = t.getItems().stream().map(i -> i.getCantidadEnviada() != null ? i.getCantidadEnviada() : 0).toList();
-        }
-        transferenciaService.confirmarRecepcion(id, cants);
+                                          @RequestBody com.inventory.dto.RecepcionRequest req) {
+        transferenciaService.confirmarRecepcion(id, req);
         return ResponseEntity.ok().build();
     }
 

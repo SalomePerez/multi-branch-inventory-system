@@ -21,10 +21,16 @@
 
   <div class="card">
     <div class="card-header">
-      <h3>Lista de Envíos Activos</h3>
-      <button class="btn-sm btn-secondary" (click)="cargar()">
-        <lucide-icon name="refresh-cw" [size]="14"></lucide-icon> Actualizar
-      </button>
+      <div class="flex-row">
+        <h3>Envíos</h3>
+        <div class="status-filters">
+          @for (st of ['TODOS', 'APROBADA', 'EN_TRANSITO', 'COMPLETADA', 'INCOMPLETA']; track st) {
+            <button class="filter-chip" [class.active]="filtroEstado === st" (click)="cambiarFiltro(st)">
+              {{ st === 'TODOS' ? 'Ver Todos' : getEstadoLabel(st) }}
+            </button>
+          }
+        </div>
+      </div>
     </div>
 
     @if (loading && envios.length === 0) {
@@ -87,14 +93,19 @@
                   <div class="time-info">
                     @if (e.fechaEstimadaLlegada) {
                       <div class="time-row">
-                        <span class="label">ETA:</span>
-                        <span class="val">{{ e.fechaEstimadaLlegada | date:'short' }}</span>
+                        <span class="label">Estimado:</span>
+                        <span class="val">{{ e.fechaEstimadaLlegada | date:'shortTime' }} ({{ e.fechaEstimadaLlegada | date:'dd/MM' }})</span>
                       </div>
                     }
                     @if (e.fechaRealLlegada) {
-                      <div class="time-row" [class.delayed]="isDelayed(e)">
+                      <div class="time-row" [class.delayed]="isDelayed(e)" [class.on-time]="!isDelayed(e)">
                         <span class="label">Real:</span>
-                        <span class="val">{{ e.fechaRealLlegada | date:'short' }}</span>
+                        <span class="val">{{ e.fechaRealLlegada | date:'shortTime' }}</span>
+                        @if (isDelayed(e)) {
+                           <lucide-icon name="alert-triangle" [size]="12" class="delay-icon"></lucide-icon>
+                        } @else {
+                           <lucide-icon name="check" [size]="12" class="on-time-icon"></lucide-icon>
+                        }
                       </div>
                     } @else if (e.estado === 'EN_TRANSITO') {
                       <div class="carrier-info">
@@ -122,6 +133,9 @@
                       <lucide-icon name="check-circle-2" [size]="14"></lucide-icon> Recibir
                     </button>
                   }
+                  @if (e.estado === 'INCOMPLETA' || e.estado === 'COMPLETADA') {
+                    <span class="text-xs text-slate-400">Finalizado</span>
+                  }
                 </td>
               </tr>
             } @empty {
@@ -143,8 +157,16 @@
         @for (r of reporteLogistica; track r.ruta) {
           <div class="compliance-item">
             <div class="c-info">
-              <strong>{{ r.ruta }}</strong>
-              <small class="route-origin">Origen: {{ r.sucursalOrigen }}</small>
+              <div class="flex justify-between items-start">
+                <div>
+                  <strong>{{ r.ruta }}</strong>
+                  <small class="route-origin">Origen: {{ r.sucursalOrigen }}</small>
+                </div>
+                <div class="prediction-chip" [class.high-risk]="getProbabilidadRetraso(r.ruta) > 30">
+                   <lucide-icon name="brain" [size]="12"></lucide-icon>
+                   Prob. Retraso: {{ getProbabilidadRetraso(r.ruta) }}%
+                </div>
+              </div>
               <span class="rate">{{ r.tasaCumplimiento }}% de éxito</span>
             </div>
             <div class="stats-row">
@@ -254,21 +276,45 @@
                   <td>{{ item.cantidadEnviada }}</td>
                   <td>
                     <input type="number" [(ngModel)]="recepcionItems[i].cantidadRecibida"
-                           [min]="0" [max]="item.cantidadEnviada"
+                           [min]="0" [max]="item.cantidadEnviada" (change)="verificarDiscrepancia()"
                            style="width:80px; padding:4px 8px; border:1px solid #e2e8f0; border-radius:6px; text-align:center">
                   </td>
                 </tr>
               }
             </tbody>
           </table>
+
+          @if (discrepanciaDetectada) {
+            <div class="shortage-handler mt-4">
+              <div class="alert-shortage">
+                <lucide-icon name="alert-circle" [size]="16"></lucide-icon>
+                <span>Se han detectado productos faltantes. Por favor indique la acción a seguir:</span>
+              </div>
+              <div class="form-grid mt-2">
+                <div class="form-group">
+                  <label>Acción de Gestión *</label>
+                  <select [(ngModel)]="accionFaltante">
+                    <option value="DEVOLUCION">Devolución (Regresa a Origen)</option>
+                    <option value="AJUSTE_INVENTARIO">Ajuste de Salida (Aceptar Pérdida)</option>
+                    <option value="PENDIENTE_REPOSICION">Pendiente de Reposición</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Notas del Faltante</label>
+                  <textarea [(ngModel)]="notasFaltante" rows="2" placeholder="Describa el estado de la caja, sellos, etc..."></textarea>
+                </div>
+              </div>
+            </div>
+          }
+
           @if (errorModal) {
             <div class="alert-error" style="margin-top:12px">{{ errorModal }}</div>
           }
         </div>
         <div class="modal-footer">
           <button class="btn btn-secondary" (click)="mostrarModalRecepcion = false">Cancelar</button>
-          <button class="btn btn-primary" (click)="confirmarRecepcionParcial()">
-            Confirmar Recepción
+          <button class="btn btn-primary" (click)="confirmarRecepcionParcial()" [class.btn-warning]="discrepanciaDetectada">
+            {{ discrepanciaDetectada ? 'Confirmar con Faltantes' : 'Confirmar Recepción' }}
           </button>
         </div>
       </div>

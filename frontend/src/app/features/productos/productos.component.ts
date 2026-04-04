@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ProductoService } from '../../core/services/producto.service';
-import { Categoria, Producto } from '../../core/models/producto.model';
+import { Categoria, Producto, UnidadMedida } from '../../core/models/producto.model';
 
 @Component({
   selector: 'app-productos',
@@ -15,6 +15,7 @@ export class ProductosComponent implements OnInit {
 
   productos: Producto[] = [];
   categorias: Categoria[] = [];
+  unidades: UnidadMedida[] = [];
   loading = false;
   error = '';
   mostrarFormulario = false;
@@ -43,7 +44,7 @@ export class ProductosComponent implements OnInit {
       categoriaId: [null, Validators.required],
       precioCosto: [0, [Validators.required, Validators.min(0)]],
       precioVenta: [0, [Validators.required, Validators.min(0)]],
-      unidadMedida: ['unidad']
+      unidadMedidaId: [null]
     });
 
     this.catForm = this.fb.group({
@@ -61,6 +62,9 @@ export class ProductosComponent implements OnInit {
     this.productoService.listarCategorias().subscribe({
       next: (data) => this.categorias = data
     });
+    this.productoService.listarUnidades().subscribe({
+      next: (data) => this.unidades = data
+    });
   }
 
   abrirFormulario(producto?: Producto) {
@@ -75,11 +79,11 @@ export class ProductosComponent implements OnInit {
         categoriaId: producto.categoriaId,
         precioCosto: producto.precioCosto,
         precioVenta: producto.precioVenta,
-        unidadMedida: producto.unidadMedida
+        unidadMedidaId: null
       });
     } else {
       this.editandoId = null;
-      this.form.reset({ unidadMedida: 'unidad', precioCosto: 0, precioVenta: 0 });
+      this.form.reset({ unidadMedidaId: null, precioCosto: 0, precioVenta: 0 });
     }
   }
 

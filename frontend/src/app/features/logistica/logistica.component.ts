@@ -1,9 +1,9 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LucideAngularModule } from 'lucide-angular';
+import { Subject, BehaviorSubject, switchMap, takeUntil } from 'rxjs';
 import { LogisticaService } from '../../core/services/logistica.service';
 import { AuthService } from '../../core/services/auth.service';
-
 import { FormsModule } from '@angular/forms';
 
 @Component({
@@ -13,7 +13,10 @@ import { FormsModule } from '@angular/forms';
   templateUrl: './logistica.component.html',
   styleUrl: './logistica.component.scss'
 })
-export class LogisticaComponent implements OnInit {
+export class LogisticaComponent implements OnInit, OnDestroy {
+  private destroy$ = new Subject<void>();
+  private filtroEstado$ = new BehaviorSubject<string>('');
+
   envios: any[] = [];
   loading = true;
   error = '';
@@ -45,30 +48,48 @@ export class LogisticaComponent implements OnInit {
     notas: ''
   };
 
+  filtroEstado: string = 'TODOS';
+  accionFaltante: string = 'DEVOLUCION';
+  notasFaltante: string = '';
+  discrepanciaDetectada: boolean = false;
+
   constructor(
     private logisticaService: LogisticaService,
     private authService: AuthService
   ) {}
 
   ngOnInit(): void {
-    // Escalonamos las llamadas ligeramente para asegurarnos de que la UI se 
-    // estabilice y la base de datos concurrente no reciba todos los requests de golpe.
-    this.cargar();
-    setTimeout(() => this.cargarStats(), 200);
-    setTimeout(() => this.cargarReporte(), 400);
-    setTimeout(() => this.logisticaService.getLogisticaSucursalReport().subscribe(r => this.reporteSucursal = r), 600);
-  }
-
-  cargar(): void {
-    this.loading = true;
-    this.logisticaService.enviosActivos().subscribe({
-      next: data => { this.envios = data; this.loading = false; },
+    // Stream reactivo de envíos: se actualiza ante cambios de filtro,
+    // mutaciones (notifyChange) y cada 10s (polling automático del servicio)
+    this.filtroEstado$.pipe(
+      switchMap(estado => this.logisticaService.getEnviosStream(estado)),
+      takeUntil(this.destroy$)
+    ).subscribe({
+      next: data => {
+        this.envios = data.filter(e => !!e.sucursalOrigenNombre);
+        this.loading = false;
+      },
       error: () => { this.error = 'Error al cargar envíos'; this.loading = false; }
     });
+
+    // Stream reactivo de estadísticas
+    this.logisticaService.getStatsStream().pipe(
+      takeUntil(this.destroy$)
+    ).subscribe(s => this.stats = s);
+
+    // Reportes analíticos (no necesitan auto-refresh)
+    this.cargarReporte();
+    this.logisticaService.getLogisticaSucursalReport().subscribe(r => this.reporteSucursal = r);
   }
 
-  cargarStats(): void {
-    this.logisticaService.getStats().subscribe(s => this.stats = s);
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  cambiarFiltro(nuevoEstado: string): void {
+    this.filtroEstado = nuevoEstado;
+    this.filtroEstado$.next(nuevoEstado === 'TODOS' ? '' : nuevoEstado);
   }
 
   cargarReporte(): void {
@@ -104,8 +125,6 @@ export class LogisticaComponent implements OnInit {
       next: () => {
         this.success = 'Envío despachado correctamente';
         this.mostrarModalDespacho = false;
-        this.cargar();
-        this.cargarStats();
         this.cargarReporte();
         setTimeout(() => this.success = '', 3000);
       },
@@ -126,8 +145,6 @@ export class LogisticaComponent implements OnInit {
       next: () => {
         this.mostrarModalRechazo = false;
         this.success = 'Solicitud rechazada';
-        this.cargar();
-        this.cargarStats();
         setTimeout(() => this.success = '', 3000);
       },
       error: (err) => this.errorModal = err.error?.detail || 'No se pudo rechazar el envío.'
@@ -152,17 +169,27 @@ export class LogisticaComponent implements OnInit {
     }));
     this.errorModal = '';
     this.mostrarModalRecepcion = true;
+    this.discrepanciaDetectada = false;
+    this.accionFaltante = 'DEVOLUCION';
+    this.notasFaltante = '';
+  }
+
+  verificarDiscrepancia(): void {
+    this.discrepanciaDetectada = this.recepcionItems.some(i => i.cantidadRecibida < i.cantidadEnviada);
   }
 
   confirmarRecepcionParcial(): void {
     const cantidades = this.recepcionItems.map(i => i.cantidadRecibida);
-    this.logisticaService.entregar(this.envioRecepcion.id, cantidades).subscribe({
+    const body = {
+      cantidades,
+      accionFaltante: this.discrepanciaDetectada ? this.accionFaltante : null,
+      notasFaltante: this.discrepanciaDetectada ? this.notasFaltante : null
+    };
+
+    this.logisticaService.entregar(this.envioRecepcion.id, body).subscribe({
       next: () => {
         this.mostrarModalRecepcion = false;
-        const esParcial = this.recepcionItems.some((i, idx) => cantidades[idx] < i.cantidadEnviada);
-        this.success = esParcial ? 'Recepción parcial registrada' : 'Envío recibido y completado';
-        this.cargar();
-        this.cargarStats();
+        this.success = this.discrepanciaDetectada ? 'Recepción parcial registrada con acción: ' + this.accionFaltante : 'Envío recibido y completado';
         this.cargarReporte();
         setTimeout(() => this.success = '', 3000);
       },
@@ -175,6 +202,8 @@ export class LogisticaComponent implements OnInit {
       case 'APROBADA': return 'badge-info';
       case 'EN_TRANSITO': return 'badge-warning';
       case 'COMPLETADA': return 'badge-success';
+      case 'INCOMPLETA': return 'badge-danger';
+      case 'RECHAZADA': return 'badge-error';
       default: return 'badge-default';
     }
   }
@@ -216,11 +245,16 @@ export class LogisticaComponent implements OnInit {
   sugerirTiempo(horas: number): void {
     const ahora = new Date();
     ahora.setHours(ahora.getHours() + horas);
-    // Formato YYYY-MM-DDThh:mm para input datetime-local
     const offset = ahora.getTimezoneOffset() * 60000;
     const localISOTime = new Date(ahora.getTime() - offset).toISOString().slice(0, 16);
     this.despachoData.fechaEstimadaLlegada = localISOTime;
     this.despachoData.tiempoTransitoEstimado = horas;
     this.despachoData.tipoRuta = horas <= 8 ? 'URBANA' : 'NACIONAL';
+  }
+
+  getProbabilidadRetraso(ruta: string): number {
+    const r = this.reporteLogistica.find(x => x.ruta === ruta);
+    if (!r) return 0;
+    return 100 - r.tasaCumplimiento;
   }
 }

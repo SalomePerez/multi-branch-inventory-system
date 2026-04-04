@@ -233,8 +233,15 @@ public class ReporteService {
                     .filter(t -> t.getFechaRealLlegada() != null && t.getFechaEstimadaLlegada() != null)
                     .filter(t -> !t.getFechaRealLlegada().isAfter(t.getFechaEstimadaLlegada()))
                     .count();
+            
+            long sinFaltantes = envios.stream()
+                    .filter(t -> t.getFechaRealLlegada() != null)
+                    .filter(t -> t.getEstado() == com.inventory.entity.enums.EstadoTransferencia.COMPLETADA)
+                    .count();
 
             double tasaCumplimiento = (completados == 0) ? 0.0 : (double) aTiempo / completados * 100.0;
+            double tasaIntegridad = (completados == 0) ? 0.0 : (double) sinFaltantes / completados * 100.0;
+            
             String sucursalOrigen = envios.get(0).getSucursalOrigen().getNombre();
 
             Map<String, Object> map = new java.util.HashMap<>();
@@ -243,7 +250,9 @@ public class ReporteService {
             map.put("totalEnvios", envios.size());
             map.put("completados", completados);
             map.put("aTiempo", aTiempo);
+            map.put("sinFaltantes", sinFaltantes);
             map.put("tasaCumplimiento", Math.round(tasaCumplimiento));
+            map.put("tasaIntegridad", Math.round(tasaIntegridad));
             return map;
         }).collect(Collectors.toList());
     }
@@ -263,7 +272,15 @@ public class ReporteService {
                     .filter(t -> t.getFechaRealLlegada() != null && t.getFechaEstimadaLlegada() != null)
                     .filter(t -> !t.getFechaRealLlegada().isAfter(t.getFechaEstimadaLlegada()))
                     .count();
+            
+            long sinFaltantes = envios.stream()
+                    .filter(t -> t.getFechaRealLlegada() != null)
+                    .filter(t -> t.getEstado() == com.inventory.entity.enums.EstadoTransferencia.COMPLETADA)
+                    .count();
+
             double tasa = (completados == 0) ? 0.0 : (double) aTiempo / completados * 100.0;
+            double tasaCalidad = (completados == 0) ? 0.0 : (double) sinFaltantes / completados * 100.0;
+            
             long rutas = envios.stream().filter(t -> t.getRutaNombre() != null)
                     .map(com.inventory.entity.Transferencia::getRutaNombre)
                     .distinct().count();
@@ -273,8 +290,10 @@ public class ReporteService {
             map.put("totalEnvios", envios.size());
             map.put("completados", completados);
             map.put("aTiempo", aTiempo);
+            map.put("sinFaltantes", sinFaltantes);
             map.put("rutasActivas", rutas);
             map.put("tasaCumplimiento", Math.round(tasa));
+            map.put("tasaCalidad", Math.round(tasaCalidad));
             return map;
         }).collect(Collectors.toList());
     }

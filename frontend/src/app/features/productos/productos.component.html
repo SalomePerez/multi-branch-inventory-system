@@ -39,7 +39,7 @@
               <td><span class="badge">{{ p.categoriaNombre }}</span></td>
               <td>{{ p.precioCosto | currency:'USD' }}</td>
               <td>{{ p.precioVenta | currency:'USD' }}</td>
-              <td>{{ p.unidadMedida }}</td>
+              <td>{{ p.unidadMedidaNombre }} <span style="color:#94a3b8; font-size:0.8rem">({{ p.unidadMedidaAbreviatura }})</span></td>
               <td class="actions">
                 <button class="btn-sm btn-edit" (click)="abrirFormulario(p)">Editar</button>
                 <button class="btn-sm btn-danger" (click)="eliminar(p.id)">Eliminar</button>
@@ -105,7 +105,12 @@
           </div>
           <div class="form-group">
             <label>Unidad de Medida</label>
-            <input formControlName="unidadMedida" placeholder="unidad" />
+            <select formControlName="unidadMedidaId">
+              <option [ngValue]="null">— Sin especificar —</option>
+              @for (u of unidades; track u.id) {
+                <option [ngValue]="u.id">{{ u.nombre }} ({{ u.abreviatura }})</option>
+              }
+            </select>
           </div>
         </div>
 

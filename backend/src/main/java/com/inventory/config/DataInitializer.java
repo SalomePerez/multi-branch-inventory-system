@@ -38,17 +38,50 @@ public class DataInitializer implements ApplicationRunner {
     private final AlertaRepository alertaRepository;
     private final OrdenCompraRepository ordenCompraRepository;
     private final TransferenciaRepository transferenciaRepository;
+    private final UnidadMedidaRepository unidadMedidaRepository;
     private final PasswordEncoder passwordEncoder;
     private final JdbcTemplate jdbcTemplate;
 
     @Override
     @Transactional
     public void run(ApplicationArguments args) {
+        seedUnidadesMedida();
         crearAdminSiNoExiste();
         if (productoRepository.count() == 0) {
             seedData();
         }
+        migrarUnidadesMedidaFaltantes();
         seedListasPrecio();
+    }
+
+    /**
+     * Asigna "Unidad" a todos los productos que no tienen unidad de medida asignada.
+     * Se ejecuta siempre al arranque para corregir datos existentes.
+     */
+    private void migrarUnidadesMedidaFaltantes() {
+        UnidadMedida uUnidad = unidadMedidaRepository.findByNombre("Unidad").orElse(null);
+        if (uUnidad == null) return;
+        List<Producto> sinUnidad = productoRepository.findAll().stream()
+                .filter(p -> p.getUnidadMedida() == null)
+                .toList();
+        if (sinUnidad.isEmpty()) return;
+        sinUnidad.forEach(p -> p.setUnidadMedida(uUnidad));
+        productoRepository.saveAll(sinUnidad);
+        log.info("Unidad de medida asignada a {} producto(s) sin unidad", sinUnidad.size());
+    }
+
+    private void seedUnidadesMedida() {
+        if (unidadMedidaRepository.count() > 0) return;
+        List.of(
+            UnidadMedida.builder().nombre("Unidad").abreviatura("und").build(),
+            UnidadMedida.builder().nombre("Kilogramo").abreviatura("kg").build(),
+            UnidadMedida.builder().nombre("Gramo").abreviatura("g").build(),
+            UnidadMedida.builder().nombre("Litro").abreviatura("L").build(),
+            UnidadMedida.builder().nombre("Caja").abreviatura("caja").build(),
+            UnidadMedida.builder().nombre("Par").abreviatura("par").build(),
+            UnidadMedida.builder().nombre("Metro").abreviatura("m").build()
+        ).forEach(unidadMedidaRepository::save);
+        log.info("Unidades de medida creadas");
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -110,26 +143,32 @@ public class DataInitializer implements ApplicationRunner {
         Usuario op2  = crearUsuario("Pedro Sánchez",     "operador2@empresa.com",        pass, RolUsuario.OPERADOR_INVENTARIO,   norte);
         Usuario op3  = crearUsuario("Sofía López",       "operador3@empresa.com",        pass, RolUsuario.OPERADOR_INVENTARIO,   sur);
 
+        // ── Unidades de medida para los productos seed ──
+        UnidadMedida uUnidad = unidadMedidaRepository.findByNombre("Unidad").orElse(null);
+
         // ── Productos ──
         // Electrónica
-        Producto laptop  = prod("LPT-001", "Laptop Pro 14",              elec, "800.00",  "1200.00");
-        Producto monitor = prod("MON-027", "Monitor 27\" 4K",            elec, "250.00",  "420.00");
-        Producto mouse   = prod("MOU-001", "Mouse Inalámbrico Ergonómico",elec, "18.00",  "39.99");
-        Producto teclado = prod("TEC-001", "Teclado Mecánico RGB",        elec, "45.00",  "89.99");
-        Producto webcam  = prod("WEB-001", "Webcam HD 1080p",             elec, "30.00",  "59.99");
-        Producto disco   = prod("DSK-001", "Disco Externo 1TB USB-C",     elec, "55.00",  "99.99");
-        Producto cable   = prod("CBL-001", "Cable USB-C 2m",              elec,  "5.00",  "12.99");
-        Producto hub     = prod("HUB-001", "Hub USB 7 Puertos",           elec, "22.00",  "45.00");
-        Producto auricular = prod("AUR-001","Auriculares Bluetooth Pro",  elec, "40.00",  "85.00");
+        Producto laptop  = prod("LPT-001", "Laptop Pro 14",              elec, "800.00",  "1200.00", uUnidad);
+        Producto monitor = prod("MON-027", "Monitor 27\" 4K",            elec, "250.00",  "420.00",  uUnidad);
+        Producto mouse   = prod("MOU-001", "Mouse Inalámbrico Ergonómico",elec, "18.00",  "39.99",   uUnidad);
+        Producto teclado = prod("TEC-001", "Teclado Mecánico RGB",        elec, "45.00",  "89.99",   uUnidad);
+        UnidadMedida uKg   = unidadMedidaRepository.findByNombre("Kilogramo").orElse(null);
+        UnidadMedida uCaja = unidadMedidaRepository.findByNombre("Caja").orElse(null);
+
+        Producto webcam  = prod("WEB-001", "Webcam HD 1080p",             elec, "30.00",  "59.99",  uUnidad);
+        Producto disco   = prod("DSK-001", "Disco Externo 1TB USB-C",     elec, "55.00",  "99.99",  uUnidad);
+        Producto cable   = prod("CBL-001", "Cable USB-C 2m",              elec,  "5.00",  "12.99",  uUnidad);
+        Producto hub     = prod("HUB-001", "Hub USB 7 Puertos",           elec, "22.00",  "45.00",  uUnidad);
+        Producto auricular = prod("AUR-001","Auriculares Bluetooth Pro",  elec, "40.00",  "85.00",  uUnidad);
         // Ferretería
-        Producto martillo  = prod("MAR-001", "Martillo 500g",              ferr,  "8.00", "18.50");
-        Producto taladro   = prod("TAL-001", "Taladro Inalámbrico 18V",    ferr, "75.00", "149.99");
-        Producto cinta     = prod("CIN-001", "Cinta Métrica 5m",           ferr,  "4.00",  "9.99");
-        Producto destorn   = prod("DES-001", "Destornillador Eléctrico",   ferr, "35.00",  "68.00");
+        Producto martillo  = prod("MAR-001", "Martillo 500g",              ferr,  "8.00", "18.50",  uUnidad);
+        Producto taladro   = prod("TAL-001", "Taladro Inalámbrico 18V",    ferr, "75.00", "149.99", uUnidad);
+        Producto cinta     = prod("CIN-001", "Cinta Métrica 5m",           ferr,  "4.00",  "9.99",  uUnidad);
+        Producto destorn   = prod("DES-001", "Destornillador Eléctrico",   ferr, "35.00",  "68.00", uUnidad);
         // Oficina
-        Producto resma     = prod("PAP-001", "Resma Papel A4 500 hojas",   ofic,  "4.00",   "8.50");
-        Producto lapiceros = prod("LAP-001", "Lapiceros Caja x12",         ofic,  "3.00",   "6.99");
-        Producto cuaderno  = prod("CUA-001", "Cuaderno Espiral A4",        ofic,  "2.50",   "5.99");
+        Producto resma     = prod("PAP-001", "Resma Papel A4 500 hojas",   ofic,  "4.00",   "8.50", uCaja);
+        Producto lapiceros = prod("LAP-001", "Lapiceros Caja x12",         ofic,  "3.00",   "6.99", uCaja);
+        Producto cuaderno  = prod("CUA-001", "Cuaderno Espiral A4",        ofic,  "2.50",   "5.99", uUnidad);
 
         // ── Inventario ──
         // Casa Central – bien surtido, excepto disco (bajo stock)
@@ -387,11 +426,12 @@ public class DataInitializer implements ApplicationRunner {
                         .rol(rol).sucursal(sucursal).activo(true).build()));
     }
 
-    private Producto prod(String sku, String nombre, Categoria cat, String costo, String venta) {
+    private Producto prod(String sku, String nombre, Categoria cat, String costo, String venta, UnidadMedida unidad) {
         return productoRepository.save(Producto.builder()
                 .sku(sku).nombre(nombre).categoria(cat)
                 .precioCosto(new BigDecimal(costo))
                 .precioVenta(new BigDecimal(venta))
+                .unidadMedida(unidad)
                 .build());
     }
 

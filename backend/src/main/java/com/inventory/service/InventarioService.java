@@ -107,6 +107,31 @@ public class InventarioService {
     }
 
     @Transactional
+    public void eliminar(Long inventarioId) {
+        Inventario inventario = inventarioRepository.findById(inventarioId)
+                .orElseThrow(() -> new IllegalArgumentException("Registro de inventario no encontrado: " + inventarioId));
+
+        // Registrar movimiento de salida para trazabilidad
+        registrarMovimiento(
+                TipoMovimiento.SALIDA,
+                inventario.getProducto(),
+                inventario.getSucursal(),
+                inventario.getCantidad(),
+                inventario.getCantidad(),
+                0, // Después de eliminar, el stock es virtualmente 0
+                null,
+                "ELIMINACION",
+                "ELIMINACION_REGISTRO",
+                "Registro de inventario eliminado por el usuario."
+        );
+
+        // Resolver alertas antes de borrar
+        alertaService.resolverAlertasStock(inventario.getProducto().getId(), inventario.getSucursal().getId());
+
+        inventarioRepository.delete(inventario);
+    }
+
+    @Transactional
     public void descontarStock(Producto producto, Sucursal sucursal, int cantidad,
                                String motivo, Long referenciaId, String referenciaTipo) {
         Inventario inventario = inventarioRepository

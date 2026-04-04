@@ -17,4 +17,11 @@ public interface TransferenciaRepository extends JpaRepository<Transferencia, Lo
     List<Transferencia> findBySucursal(@Param("sucursalId") Long sucursalId);
 
     List<Transferencia> findByEstadoOrderByCreatedAtDesc(EstadoTransferencia estado);
+
+    @Query("SELECT t FROM Transferencia t WHERE t.estado NOT IN ('PENDIENTE', 'RECHAZADA') " +
+           "AND (:estado IS NULL OR t.estado = :estado) ORDER BY t.updatedAt DESC")
+    List<Transferencia> findEnviosActivos(@Param("estado") EstadoTransferencia estado);
+
+    @Query("SELECT COUNT(t) FROM Transferencia t WHERE t.estado = :estado")
+    long countByEstado(@Param("estado") EstadoTransferencia estado);
 }

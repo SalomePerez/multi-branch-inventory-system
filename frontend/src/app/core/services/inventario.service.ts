@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, BehaviorSubject, interval, merge, tap, switchMap, catchError, of, shareReplay } from 'rxjs';
+import { Observable, BehaviorSubject, interval, merge, tap, switchMap, catchError, of, shareReplay, startWith } from 'rxjs';
 import { AjusteInventarioRequest, InventarioItem } from '../models/inventario.model';
 import { environment } from '../../../environments/environment';
 
@@ -14,6 +14,8 @@ export class InventarioService {
   /**
    * Obtiene un flujo reactivo del inventario que se actualiza automáticamente 
    * ante cambios locales (CRUD) o cada 10 segundos (polling).
+   * 
+   * IMPORTANTE: Usa startWith([]) para garantizar datos iniciales incluso si la red es lenta.
    */
   getInventario(sucursalId: number | null): Observable<InventarioItem[]> {
     return merge(
@@ -26,6 +28,7 @@ export class InventarioService {
         }
         return this.listarPorSucursal(sucursalId);
       }),
+      startWith([]),
       shareReplay(1),
       catchError(err => {
         console.error('Error en sync de inventario:', err);

@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, BehaviorSubject, interval, merge, tap, switchMap, shareReplay, catchError, of } from 'rxjs';
+import { Observable, BehaviorSubject, interval, merge, tap, switchMap, shareReplay, catchError, of, startWith } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
@@ -13,6 +13,9 @@ export class LogisticaService {
   /**
    * Obtiene un flujo reactivo de envíos que se actualiza automáticamente 
    * ante acciones locales o cada 10 segundos.
+   * 
+   * IMPORTANTE: El refreshSignal$ es un BehaviorSubject que emite inmediatamente,
+   * lo que garantiza que se carguen datos incluso en la primera suscripción.
    */
   getEnviosStream(estado?: string): Observable<any[]> {
     return merge(
@@ -20,6 +23,8 @@ export class LogisticaService {
       interval(10000)
     ).pipe(
       switchMap(() => this.enviosActivos(estado)),
+      // Añadir startWith para asegurar que siempre devuelve un array inicial
+      startWith([]),
       shareReplay(1),
       catchError(err => {
         console.error('Error en sync de logística:', err);
@@ -37,7 +42,12 @@ export class LogisticaService {
       interval(10000)
     ).pipe(
       switchMap(() => this.getStats()),
-      shareReplay(1)
+      startWith({ enTransito: 0, pendientesEnvio: 0 }),
+      shareReplay(1),
+      catchError(err => {
+        console.error('Error en sync de stats:', err);
+        return of({ enTransito: 0, pendientesEnvio: 0 });
+      })
     );
   }
 

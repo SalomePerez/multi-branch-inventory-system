@@ -16,10 +16,10 @@ public interface InventarioRepository extends JpaRepository<Inventario, Long> {
 
     List<Inventario> findBySucursalId(Long sucursalId);
 
-    @Query("SELECT i FROM Inventario i JOIN FETCH i.producto p LEFT JOIN FETCH p.categoria")
+    @Query("SELECT i FROM Inventario i JOIN FETCH i.producto p LEFT JOIN FETCH p.categoria LEFT JOIN FETCH p.unidadMedida JOIN FETCH i.sucursal")
     List<Inventario> findAllConProducto();
 
-    @Query("SELECT i FROM Inventario i JOIN FETCH i.producto p JOIN FETCH p.categoria " +
+    @Query("SELECT i FROM Inventario i JOIN FETCH i.producto p LEFT JOIN FETCH p.categoria LEFT JOIN FETCH p.unidadMedida JOIN FETCH i.sucursal " +
            "WHERE i.sucursal.id = :sucursalId")
     List<Inventario> findBySucursalIdConProducto(@Param("sucursalId") Long sucursalId);
 

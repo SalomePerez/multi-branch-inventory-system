@@ -25,17 +25,17 @@ public class LogisticaController {
 
     @GetMapping("/envios-activos")
     public ResponseEntity<List<TransferenciaResponse>> enviosActivos(@RequestParam(required = false) String estado) {
-        return ResponseEntity.ok(transferenciaRepository.findAll().stream()
-                .filter(t -> {
-                    if (estado != null && !estado.isEmpty() && !"TODOS".equals(estado)) {
-                        return t.getEstado().name().equals(estado);
-                    }
-                    // Por defecto mostramos todo lo relevante a logística (excepto rechazadas/pendientes iniciales)
-                    return t.getEstado() != EstadoTransferencia.PENDIENTE && t.getEstado() != EstadoTransferencia.RECHAZADA;
-                })
-                .sorted((a, b) -> b.getUpdatedAt().compareTo(a.getUpdatedAt()))
-                .map(t -> transferenciaService.toResponse(t))
-                .toList());
+        EstadoTransferencia filtro = null;
+        if (estado != null && !estado.isEmpty() && !"TODOS".equals(estado)) {
+            try {
+                filtro = EstadoTransferencia.valueOf(estado);
+            } catch (IllegalArgumentException ignored) {
+            }
+        }
+        return ResponseEntity.ok(
+                transferenciaRepository.findEnviosActivos(filtro).stream()
+                        .map(transferenciaService::toResponse)
+                        .toList());
     }
 
     @PostMapping("/despachar/{id}")
@@ -66,11 +66,9 @@ public class LogisticaController {
 
     @GetMapping("/stats")
     public ResponseEntity<Map<String, Object>> stats() {
-        long enTransito = transferenciaRepository.findAll().stream()
-                .filter(t -> t.getEstado() == EstadoTransferencia.EN_TRANSITO).count();
-        long pendientes = transferenciaRepository.findAll().stream()
-                .filter(t -> t.getEstado() == EstadoTransferencia.APROBADA).count();
-        
+        long enTransito = transferenciaRepository.countByEstado(EstadoTransferencia.EN_TRANSITO);
+        long pendientes = transferenciaRepository.countByEstado(EstadoTransferencia.APROBADA);
+
         return ResponseEntity.ok(Map.of(
             "enTransito", enTransito,
             "pendientesEnvio", pendientes

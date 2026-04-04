@@ -59,27 +59,40 @@ export class LogisticaComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
+    // Cargar datos iniciales de reportes y estadísticas primero
+    this.cargarReporte();
+    this.logisticaService.getLogisticaSucursalReport().subscribe(r => this.reporteSucursal = r);
+
     // Stream reactivo de envíos: se actualiza ante cambios de filtro,
     // mutaciones (notifyChange) y cada 10s (polling automático del servicio)
+    // IMPORTANTE: El BehaviorSubject emite inmediatamente, desencadenando la carga inicial
     this.filtroEstado$.pipe(
       switchMap(estado => this.logisticaService.getEnviosStream(estado)),
       takeUntil(this.destroy$)
     ).subscribe({
       next: data => {
-        this.envios = data.filter(e => !!e.sucursalOrigenNombre);
+        if (Array.isArray(data)) {
+          // Filtra filas que realmente tienen datos (sucursalOrigenNombre existe)
+          this.envios = data.filter(e => e && e.sucursalOrigenNombre && e.sucursalOrigenNombre.trim());
+        } else {
+          this.envios = [];
+        }
         this.loading = false;
       },
-      error: () => { this.error = 'Error al cargar envíos'; this.loading = false; }
+      error: (err) => {
+        console.error('Error al cargar envíos:', err);
+        this.error = 'Error al cargar envíos';
+        this.loading = false;
+      }
     });
 
     // Stream reactivo de estadísticas
     this.logisticaService.getStatsStream().pipe(
       takeUntil(this.destroy$)
-    ).subscribe(s => this.stats = s);
-
-    // Reportes analíticos (no necesitan auto-refresh)
-    this.cargarReporte();
-    this.logisticaService.getLogisticaSucursalReport().subscribe(r => this.reporteSucursal = r);
+    ).subscribe({
+      next: s => this.stats = s,
+      error: (err) => console.error('Error al cargar estadísticas:', err)
+    });
   }
 
   ngOnDestroy(): void {
